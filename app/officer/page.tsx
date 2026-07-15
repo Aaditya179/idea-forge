@@ -160,6 +160,11 @@ export default function OfficerDashboard() {
                       {complaint.category && (
                         <span className="text-xs text-text-muted block mt-0.5">{complaint.category}</span>
                       )}
+                      {complaint.cluster_id && (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded mt-1">
+                          🔗 Clustered
+                        </span>
+                      )}
                     </td>
                     <td className="px-5 py-4 text-sm text-text-secondary">
                       {(complaint.profiles as unknown as { full_name: string })?.full_name || "—"}
