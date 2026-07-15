@@ -508,6 +508,8 @@ export interface ClusterSummary {
   department_name: string;
   category: string | null;
   location_key: string;
+  lat_zone: number | null;
+  lng_zone: number | null;
   count: number;
   sample_texts: string[];
 }
@@ -517,7 +519,7 @@ export async function getClusterSummaries(
 ): Promise<ClusterSummary[]> {
   const { data, error } = await supabase
     .from("complaints")
-    .select("raw_text, category, location_text, departments(name)");
+    .select("raw_text, category, latitude, longitude, departments(name)");
 
   if (error) {
     console.error("Error fetching cluster summaries:", error);
@@ -527,20 +529,49 @@ export async function getClusterSummaries(
   type Row = {
     raw_text: string;
     category: string | null;
-    location_text: string | null;
+    latitude: number | null;
+    longitude: number | null;
     departments: { name: string } | null;
   };
 
-  // Bucket by department + category + rough location (first comma segment, or "Unknown")
-  const clusters = new Map<string, { department_name: string; category: string | null; location_key: string; texts: string[] }>();
+  // Bucket complaints by department + category + lat/lng grid zone.
+  // Rounding to 2 decimal places creates ~1.1 km × ~0.9 km cells at Indian latitudes —
+  // fine-grained enough to distinguish wards, coarse enough to merge nearby complaints.
+  // Complaints with no coordinates fall into a "no-location" bucket (still useful for analysis).
+  const clusters = new Map<
+    string,
+    {
+      department_name: string;
+      category: string | null;
+      location_key: string;
+      lat_zone: number | null;
+      lng_zone: number | null;
+      texts: string[];
+    }
+  >();
 
   for (const row of (data as unknown as Row[]) || []) {
     const deptName = row.departments?.name || "Unknown";
-    const locationKey = row.location_text?.split(",")[1]?.trim() || row.location_text?.split(",")[0]?.trim() || "Unknown area";
+    const hasCoords = row.latitude != null && row.longitude != null;
+    const latZone = hasCoords ? Math.round(row.latitude! * 100) / 100 : null;
+    const lngZone = hasCoords ? Math.round(row.longitude! * 100) / 100 : null;
+
+    // Human-readable zone label shown in the Groq prompt and UI
+    const locationKey = hasCoords
+      ? `Zone ${latZone?.toFixed(2)},${lngZone?.toFixed(2)}`
+      : "Unknown area";
+
     const key = `${deptName}|${row.category || "Uncategorized"}|${locationKey}`;
 
     if (!clusters.has(key)) {
-      clusters.set(key, { department_name: deptName, category: row.category, location_key: locationKey, texts: [] });
+      clusters.set(key, {
+        department_name: deptName,
+        category: row.category,
+        location_key: locationKey,
+        lat_zone: latZone,
+        lng_zone: lngZone,
+        texts: [],
+      });
     }
     clusters.get(key)!.texts.push(row.raw_text);
   }
@@ -550,10 +581,12 @@ export async function getClusterSummaries(
       department_name: c.department_name,
       category: c.category,
       location_key: c.location_key,
+      lat_zone: c.lat_zone,
+      lng_zone: c.lng_zone,
       count: c.texts.length,
       sample_texts: c.texts.slice(0, 3),
     }))
-    .filter((c) => c.count >= 1) // keep all; UI/prompt can filter to >=2 for "real" clusters
+    .filter((c) => c.count >= 1) // route will filter to >=3 before sending to Groq
     .sort((a, b) => b.count - a.count);
 }
 
