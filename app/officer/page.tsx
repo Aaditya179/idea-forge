@@ -8,6 +8,7 @@ import { getOfficerComplaints } from "@/lib/queries/complaints";
 import StatusBadge from "@/components/StatusBadge";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import ErrorMessage from "@/components/ErrorMessage";
+import KPIGrid from "@/components/officer/KPIGrid";
 import type { Complaint, ComplaintStatus, Profile } from "@/lib/types";
 
 const STATUS_OPTIONS: { value: ComplaintStatus | "all"; label: string }[] = [
@@ -76,6 +77,9 @@ export default function OfficerDashboard() {
           ))}
         </select>
       </div>
+
+      {/* KPI Cards */}
+      <KPIGrid complaints={complaints} className="mb-8" />
 
       {/* Complaints table */}
       {complaints.length === 0 ? (
