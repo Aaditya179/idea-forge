@@ -16,6 +16,8 @@ import LoadingSpinner from "@/components/LoadingSpinner";
 import ErrorMessage from "@/components/ErrorMessage";
 import AISummaryCard from "@/components/officer/AISummaryCard";
 import SuggestedActionCard from "@/components/officer/SuggestedActionCard";
+import ComplaintsMapLoader from "@/components/admin/ComplaintsMapLoader";
+import type { ComplaintMapPoint } from "@/lib/queries/complaints";
 import type { Complaint, ComplaintUpdate as ComplaintUpdateType, ComplaintStatus } from "@/lib/types";
 
 const STATUS_OPTIONS: ComplaintStatus[] = [
@@ -256,6 +258,31 @@ export default function OfficerComplaintDetailPage() {
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Location map */}
+          <div className="bg-white rounded-xl border border-border p-6">
+            <h2 className="text-lg font-bold text-text-primary mb-4">Location</h2>
+            {complaint.latitude != null && complaint.longitude != null ? (
+              <div className="rounded-lg overflow-hidden border border-border">
+                <ComplaintsMapLoader
+                  points={[
+                    {
+                      id: complaint.id,
+                      latitude: complaint.latitude,
+                      longitude: complaint.longitude,
+                      category: complaint.category,
+                      department_name: complaint.departments?.name || "Unassigned",
+                      status: complaint.status,
+                    } satisfies ComplaintMapPoint,
+                  ]}
+                />
+              </div>
+            ) : (
+              <div className="h-[200px] flex items-center justify-center rounded-lg border border-dashed border-border bg-surface-raised">
+                <p className="text-sm text-text-muted">Location unavailable</p>
+              </div>
+            )}
           </div>
 
           {/* Status update form */}
