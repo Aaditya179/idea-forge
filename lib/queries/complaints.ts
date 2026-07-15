@@ -137,7 +137,7 @@ export async function createComplaint(
     .single();
 
   if (error) {
-    console.error("Error creating complaint:", error.message, error.details, error.hint);
+    console.warn("Error creating complaint:", error.message, error.details, error.hint);
     return null;
   }
 
@@ -214,7 +214,7 @@ export async function createComplaintUpdate(
     .single();
 
   if (error) {
-    console.error("Error creating complaint update:", error.message, error.details, error.hint);
+    console.warn("Error creating complaint update:", error.message, error.details, error.hint);
     return null;
   }
 

@@ -105,6 +105,14 @@ Do not return any other text, explanations, or markdown. Only valid JSON.`,
       .eq("id", complaintId)
       .single();
 
+    // Insert initial "Complaint submitted" update using admin client to bypass the citizen RLS bug
+    await supabaseAdmin.from("complaint_updates").insert({
+      complaint_id: complaintId,
+      note: "Complaint submitted",
+      status_at_time: "submitted",
+      updated_by: complaintData?.user_id || null,
+    });
+
     // Insert complaint_updates row indicating classification success
     await supabaseAdmin.from("complaint_updates").insert({
       complaint_id: complaintId,
