@@ -25,6 +25,29 @@ export async function getCurrentProfile(supabase: SupabaseClient): Promise<Profi
 }
 
 /**
+ * Get any profile by UUID.
+ * NOTE: Requires the "Admins can read all profiles" RLS policy to be active in Supabase.
+ * See supabase/migrations/002_admin_profile_read.sql.
+ * Falls back gracefully to null if the policy is missing — callers should show a fallback label.
+ */
+export async function getProfileById(
+  supabase: SupabaseClient,
+  profileId: string
+): Promise<Pick<Profile, "id" | "full_name" | "role" | "department_id"> | null> {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, full_name, role, department_id")
+    .eq("id", profileId)
+    .single();
+
+  if (error) {
+    return null; // silently degrade — caller shows fallback
+  }
+
+  return data as Pick<Profile, "id" | "full_name" | "role" | "department_id">;
+}
+
+/**
  * Create a new profile after signup
  */
 export async function createProfile(
