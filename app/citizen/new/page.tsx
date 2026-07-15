@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { getCurrentProfile } from "@/lib/queries/profiles";
 import { getDepartmentByName } from "@/lib/queries/departments";
-import { createComplaint, createComplaintUpdate, uploadComplaintImage } from "@/lib/queries/complaints";
+import { createComplaint, uploadComplaintImage } from "@/lib/queries/complaints";
 import { classifyComplaint } from "@/lib/routing/keywordRouter";
 import VoiceInput from "@/components/VoiceInput";
 import LocationPicker, { LocationData } from "@/components/LocationPicker";
@@ -95,20 +95,11 @@ export default function NewComplaintPage() {
         return;
       }
 
-      // 6. Insert initial complaint update (wrapped in try/catch to bypass client-side RLS policy restrictions)
-      try {
-        await createComplaintUpdate(supabase, {
-          complaint_id: complaint.id,
-          note: "Complaint submitted",
-          status_at_time: "submitted",
-          updated_by: profile.id,
-        });
-      } catch (updateErr) {
-        console.warn("Client-side update log failed (RLS policy). Handled by server classifier.", updateErr);
-      }
+      // 6b. Call server-side Groq classification API (updates department_id + priority in DB).
+      // Keep a record of what the classifier returned so the duplicate check can use it.
+      let classifiedDepartmentId: string = department.id;
+      let classifiedPriority: string | null = null;
 
-      // 6b. Call server-side Groq classification API as an additive step.
-      // If it fails or times out (~8 seconds), we gracefully catch the error and keep the initial keyword classification.
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 8000);
@@ -122,8 +113,14 @@ export default function NewComplaintPage() {
 
         clearTimeout(timeoutId);
 
-        if (!response.ok) {
-          throw new Error(`API returned status ${response.status}`);
+        if (response.ok) {
+          const classifyData = await response.json();
+          // Resolve the department_id for the AI-classified category
+          if (classifyData.category) {
+            const aiDept = await getDepartmentByName(supabase, classifyData.category);
+            if (aiDept) classifiedDepartmentId = aiDept.id;
+          }
+          if (classifyData.priority) classifiedPriority = classifyData.priority;
         }
       } catch (classifyErr) {
         console.warn(
@@ -132,8 +129,42 @@ export default function NewComplaintPage() {
         );
       }
 
-      // 7. Redirect to dashboard
-      router.push("/citizen");
+      // 6c. Duplicate / proximity + LLM-similarity check — non-blocking, never fails the submission.
+      let similarCount = 0;
+      try {
+        const dupController = new AbortController();
+        // 14 s: up to 8 s for Groq similarity call + buffer for SQL + network
+        const dupTimeout = setTimeout(() => dupController.abort(), 14000);
+
+        const dupRes = await fetch("/api/check-duplicates", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            complaintId: complaint.id,
+            rawText,                        // needed for LLM similarity filter
+            lat: locationData.lat,
+            lng: locationData.lng,
+            departmentId: classifiedDepartmentId,
+            priority: classifiedPriority,
+          }),
+          signal: dupController.signal,
+        });
+
+        clearTimeout(dupTimeout);
+
+        if (dupRes.ok) {
+          const dupData = await dupRes.json();
+          similarCount = dupData.similarCount ?? 0;
+        }
+      } catch (dupErr) {
+        console.warn("[NewComplaint] Duplicate check failed or timed out — submission continues.", dupErr);
+      }
+
+      // 7. Redirect to dashboard, passing similar count for banner display
+      const redirectUrl = similarCount > 0
+        ? `/citizen?similar=${similarCount}`
+        : "/citizen";
+      router.push(redirectUrl);
       router.refresh();
     } catch (err) {
       console.error("Error submitting complaint:", err);
