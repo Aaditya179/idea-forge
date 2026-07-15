@@ -30,12 +30,11 @@ if (!supabaseUrl || !serviceKey) {
 const supabase = createClient(supabaseUrl, serviceKey);
 
 async function testSubmit() {
-  // Let's get profiles
-  const { data: profiles, error: profileError } = await supabase
-    .from("profiles")
+  const { data: departments, error: deptError } = await supabase
+    .from("departments")
     .select("*");
 
-  console.log("Profiles in system:", profiles);
+  console.log("Departments in database:", departments);
 }
 
 testSubmit();
