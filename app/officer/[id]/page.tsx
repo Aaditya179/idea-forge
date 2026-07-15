@@ -10,6 +10,7 @@ import {
   getComplaintUpdates,
   updateComplaintStatus,
   createComplaintUpdate,
+  getDuplicateStats,
 } from "@/lib/queries/complaints";
 import StatusBadge from "@/components/StatusBadge";
 import LoadingSpinner from "@/components/LoadingSpinner";
@@ -48,6 +49,9 @@ export default function OfficerComplaintDetailPage() {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
 
+  // Duplicate cluster stats (reuses admin getDuplicateStats query)
+  const [duplicateStats, setDuplicateStats] = useState<{ clusterCount: number; hoursSaved: number } | null>(null);
+
   // Status update form
   const [newStatus, setNewStatus] = useState<ComplaintStatus>("in_review");
   const [updateNote, setUpdateNote] = useState("");
@@ -65,6 +69,10 @@ export default function OfficerComplaintDetailPage() {
     }
     setComplaint(c);
     setNewStatus(c.status as ComplaintStatus);
+
+    // Fetch duplicate cluster stats (same query the admin detail page uses)
+    const dupStats = await getDuplicateStats(supabase, c.category ?? '', c.location_text);
+    setDuplicateStats(dupStats);
 
     const u = await getComplaintUpdates(supabase, id);
     setUpdates(u);
@@ -335,6 +343,40 @@ export default function OfficerComplaintDetailPage() {
 
         {/* Timeline sidebar */}
         <div className="lg:col-span-1 space-y-6">
+          {/* Similar Complaints Nearby — category + location heuristic from getDuplicateStats */}
+          {duplicateStats && (
+            <div className="bg-white rounded-xl border border-border p-6">
+              <h2 className="text-lg font-bold text-text-primary mb-4 flex items-center gap-2">
+                <svg className="w-5 h-5 text-violet-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                Similar Complaints Nearby
+              </h2>
+              <div className="space-y-3">
+                <div className="p-3 bg-violet-50 border border-violet-100 rounded-lg">
+                  <div className="text-2xl font-bold text-violet-900">
+                    {duplicateStats.clusterCount} {duplicateStats.clusterCount === 1 ? 'Case' : 'Cases'}
+                  </div>
+                  <div className="text-xs text-violet-700 font-medium mt-0.5">
+                    {duplicateStats.clusterCount > 1
+                      ? `Part of a cluster of ${duplicateStats.clusterCount} complaints with similar category and nearby location`
+                      : 'Unique complaint — no similar complaints found nearby'}
+                  </div>
+                </div>
+                {duplicateStats.hoursSaved > 0 && (
+                <div className="p-3 bg-emerald-50 border border-emerald-100 rounded-lg">
+                  <div className="text-2xl font-bold text-emerald-900">
+                    {duplicateStats.hoursSaved} {duplicateStats.hoursSaved === 1 ? 'Hour' : 'Hours'}
+                  </div>
+                  <div className="text-xs text-emerald-700 font-medium mt-0.5">
+                    Estimated time saved by clustering related complaints
+                  </div>
+                </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* AI Summary */}
           <AISummaryCard
             summary={aiAnalysis?.summary || ""}
