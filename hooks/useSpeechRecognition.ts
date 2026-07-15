@@ -177,9 +177,12 @@ export function useSpeechRecognition(
     };
 
     recognition.onerror = (event: SpeechRecognitionErrorEventData) => {
-      console.error("[SpeechRecognition] error occurred:", event.error, event.message);
-      // "no-speech" and "aborted" are normal when the user stops voluntarily
-      if (event.error !== "no-speech" && event.error !== "aborted") {
+      // "no-speech" and "aborted" are normal when the user stops voluntarily or pauses speaking.
+      // We log them as info rather than console.error to prevent triggering Next.js Dev Overlay.
+      if (event.error === "no-speech" || event.error === "aborted") {
+        console.log("[SpeechRecognition] stopped: ", event.error);
+      } else {
+        console.error("[SpeechRecognition] error occurred:", event.error, event.message);
         console.warn("[SpeechRecognition] warning:", event.error);
       }
       setIsListening(false);
