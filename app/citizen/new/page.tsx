@@ -179,6 +179,36 @@ export default function NewComplaintPage() {
         );
       }
 
+      // 6b. Call server-side Groq classification API as an additive step.
+      // If it fails or times out (~8 seconds), we gracefully catch the error and keep the initial keyword classification.
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+        const response = await fetch("/api/classify", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            complaintId: complaint.id,
+            rawText,
+          }),
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          throw new Error(`API returned status ${response.status}`);
+        }
+      } catch (classifyErr) {
+        console.warn(
+          "[NewComplaint] AI classification failed or timed out. Falling back to keyword classification.",
+          classifyErr
+        );
+      }
+
       // 7. Redirect to dashboard
       router.push("/citizen");
       router.refresh();
