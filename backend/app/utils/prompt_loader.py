@@ -16,10 +16,12 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-# All prompt files live in `app/prompts/`, resolved relative to this file so
-# the utility works regardless of the current working directory the app is
-# started from.
-_PROMPTS_DIR = Path(__file__).resolve().parent.parent / "prompts"
+# Prompt files should live in `app/prompts/`. Older files in this project
+# were created under `app/prompt/`, so keep a compatibility fallback while new
+# agents use the plural directory.
+_APP_DIR = Path(__file__).resolve().parent.parent
+_PROMPTS_DIR = _APP_DIR / "prompts"
+_LEGACY_PROMPT_DIR = _APP_DIR / "prompt"
 
 
 class PromptNotFoundError(FileNotFoundError):
@@ -41,6 +43,8 @@ def load_prompt(filename: str) -> str:
         PromptNotFoundError: If the prompt file does not exist.
     """
     prompt_path = _PROMPTS_DIR / filename
+    if not prompt_path.is_file():
+        prompt_path = _LEGACY_PROMPT_DIR / filename
 
     if not prompt_path.is_file():
         logger.error("Prompt file not found: %s", prompt_path)

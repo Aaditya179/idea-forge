@@ -43,12 +43,13 @@ def get_db_client() -> Client:
         Security rather than relying on Postgres policies.
     """
     supabase_url = os.getenv("SUPABASE_URL")
-    supabase_key = os.getenv("SUPABASE_KEY")
+    supabase_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_KEY")
 
     if not supabase_url or not supabase_key:
         logger.error("Supabase credentials are missing from the environment.")
         raise DatabaseConfigError(
-            "SUPABASE_URL and SUPABASE_KEY must be set in the environment (.env)."
+            "SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set in the "
+            "environment (.env). SUPABASE_KEY is accepted as a legacy alias."
         )
 
     logger.info("Supabase client initialized.")
