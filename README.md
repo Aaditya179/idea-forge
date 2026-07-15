@@ -123,3 +123,24 @@ See `supabase/migrations/001_initial_schema.sql` for the full schema including:
 | Admin   | All complaints             | View analytics, manage all data |
 
 All access is enforced at the **database level** via Supabase RLS policies.
+
+## Groq AI Features
+
+This project includes advanced AI-powered enhancements powered by Groq:
+
+### 1. AI Complaint Classification & Routing
+- **Location:** `lib/ai/classifyComplaint.ts` triggered via Next.js API `/api/classify`
+- **Model:** `llama-3.3-70b-versatile`
+- **Functionality:** Evaluates raw multilingual text (English, Hindi, Marathi, Hinglish), routes to the correct department (Water Supply, Electricity, Roads, Sanitation, Other), determines complaint urgency priority (`low`, `medium`, `high`), and appends an AI classification log. If it fails, it gracefully falls back to local keyword-based routing.
+
+### 2. Speech-to-Text Voice Transcript Cleanup
+- **Location:** `/api/clean-transcript` called upon mic-recording completion
+- **Model:** `llama-3.3-70b-versatile`
+- **Functionality:** Corrects voice transcription typos, civic terminology errors (e.g. `'pot hold'` -> `'pothole'`), and grammatical mistakes while retaining original language, intent, and meaning.
+
+### Configuration
+To configure Groq AI, add the following to your `.env.local` file:
+```env
+GROQ_API_KEY=your_groq_api_key_here
+```
+

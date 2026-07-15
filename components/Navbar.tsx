@@ -36,7 +36,7 @@ export default function Navbar({ role, fullName }: NavbarProps) {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    router.push("/login");
+    router.push("/");
     router.refresh();
   };
 

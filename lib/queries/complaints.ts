@@ -116,6 +116,8 @@ export async function createComplaint(
     department_id: string;
     location_text?: string | null;
     image_url?: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
   }
 ): Promise<Complaint | null> {
   const { data, error } = await supabase
@@ -128,12 +130,14 @@ export async function createComplaint(
       status: "submitted",
       location_text: complaint.location_text || null,
       image_url: complaint.image_url || null,
+      latitude: complaint.latitude || null,
+      longitude: complaint.longitude || null,
     })
     .select()
     .single();
 
   if (error) {
-    console.error("Error creating complaint:", error);
+    console.error("Error creating complaint:", error.message, error.details, error.hint);
     return null;
   }
 
@@ -210,7 +214,7 @@ export async function createComplaintUpdate(
     .single();
 
   if (error) {
-    console.error("Error creating complaint update:", error);
+    console.error("Error creating complaint update:", error.message, error.details, error.hint);
     return null;
   }
 
