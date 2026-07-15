@@ -31,6 +31,11 @@ interface VoiceInputProps {
 export default function VoiceInput({ value, onChange, textareaId }: VoiceInputProps) {
   const baseValueRef = useRef<string>("");
   const [isCleaning, setIsCleaning] = React.useState(false);
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleTranscriptUpdate = (transcript: string) => {
     // Append voice transcript to whatever text existed before recording started
@@ -104,6 +109,10 @@ export default function VoiceInput({ value, onChange, textareaId }: VoiceInputPr
       startListening();
     }
   };
+
+  if (!mounted) {
+    return null;
+  }
 
   // If the browser doesn't support SpeechRecognition, render a disabled indicator
   if (!isSupported) {

@@ -8,6 +8,7 @@ import { getDepartmentByName } from "@/lib/queries/departments";
 import { createComplaint, createComplaintUpdate, uploadComplaintImage } from "@/lib/queries/complaints";
 import { classifyComplaint } from "@/lib/routing/keywordRouter";
 import VoiceInput from "@/components/VoiceInput";
+import { MapPin } from "lucide-react";
 
 export default function NewComplaintPage() {
   const router = useRouter();
@@ -15,10 +16,61 @@ export default function NewComplaintPage() {
 
   const [rawText, setRawText] = useState("");
   const [locationText, setLocationText] = useState("");
+  const [latitude, setLatitude] = useState<number | null>(null);
+  const [longitude, setLongitude] = useState<number | null>(null);
+  const [locating, setLocating] = useState(false);
+  const [locationError, setLocationError] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const handleGetLocation = () => {
+    setLocating(true);
+    setLocationError("");
+
+    if (!navigator.geolocation) {
+      setLocationError("Geolocation is not supported by your browser");
+      setLocating(false);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const lat = position.coords.latitude;
+        const lon = position.coords.longitude;
+        setLatitude(lat);
+        setLongitude(lon);
+
+        try {
+          const res = await fetch(`/api/reverse-geocode?lat=${lat}&lon=${lon}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.address) {
+              setLocationText(data.address);
+            }
+          } else {
+            throw new Error("Failed to reverse geocode");
+          }
+        } catch (err) {
+          console.warn("Reverse geocode failed, using coordinates only:", err);
+          setLocationText(`${lat.toFixed(5)}, ${lon.toFixed(5)}`);
+        } finally {
+          setLocating(false);
+        }
+      },
+      (err) => {
+        console.error("Geolocation error:", err);
+        let msg = "Couldn't get your location — please enter it manually";
+        if (err.code === err.PERMISSION_DENIED) {
+          msg = "Location permission denied — please enter it manually";
+        }
+        setLocationError(msg);
+        setLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
+  };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -75,6 +127,8 @@ export default function NewComplaintPage() {
         department_id: department.id,
         location_text: locationText || null,
         image_url: imageUrl,
+        latitude,
+        longitude,
       });
 
       if (!complaint) {
@@ -169,9 +223,34 @@ export default function NewComplaintPage() {
 
           {/* Location */}
           <div>
-            <label htmlFor="complaint-location" className="block text-sm font-semibold text-text-primary mb-2">
-              Location <span className="text-text-muted font-normal">(optional)</span>
-            </label>
+            <div className="flex items-center justify-between mb-2">
+              <label htmlFor="complaint-location" className="block text-sm font-semibold text-text-primary">
+                Location <span className="text-text-muted font-normal">(optional)</span>
+              </label>
+              
+              <button
+                type="button"
+                onClick={handleGetLocation}
+                disabled={locating}
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold border border-border bg-white text-text-secondary hover:text-primary-600 hover:border-primary-400 hover:bg-primary-50/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
+              >
+                {locating ? (
+                  <>
+                    <svg className="animate-spin h-3.5 w-3.5 text-primary-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>Locating...</span>
+                  </>
+                ) : (
+                  <>
+                    <MapPin className="w-3.5 h-3.5 text-primary-500" />
+                    <span>Use my current location</span>
+                  </>
+                )}
+              </button>
+            </div>
+            
             <input
               id="complaint-location"
               type="text"
@@ -180,6 +259,19 @@ export default function NewComplaintPage() {
               className="w-full px-4 py-2.5 rounded-xl border border-border bg-white text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               placeholder="E.g., Main Street, near City Hospital"
             />
+            
+            {locationError && (
+              <p className="text-xs text-red-600 mt-1.5 font-medium flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-600" />
+                {locationError}
+              </p>
+            )}
+
+            {(latitude && longitude) && !locationError && (
+              <p className="text-[11px] text-emerald-600 mt-1 font-mono">
+                Coordinates captured: {latitude.toFixed(5)}, {longitude.toFixed(5)}
+              </p>
+            )}
           </div>
 
           {/* Image upload */}

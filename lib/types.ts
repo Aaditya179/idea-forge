@@ -37,6 +37,8 @@ export interface Complaint {
   priority: Priority | null;
   location_text: string | null;
   image_url: string | null;
+  latitude: number | null;
+  longitude: number | null;
   created_at: string;
   updated_at: string;
   // Joined fields (optional, present when queries join)
