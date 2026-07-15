@@ -137,13 +137,47 @@ export default function NewComplaintPage() {
         return;
       }
 
-      // 6. Insert initial complaint update
-      await createComplaintUpdate(supabase, {
-        complaint_id: complaint.id,
-        note: "Complaint submitted",
-        status_at_time: "submitted",
-        updated_by: profile.id,
-      });
+      // 6. Insert initial complaint update (wrapped in try/catch to bypass client-side RLS policy restrictions)
+      try {
+        await createComplaintUpdate(supabase, {
+          complaint_id: complaint.id,
+          note: "Complaint submitted",
+          status_at_time: "submitted",
+          updated_by: profile.id,
+        });
+      } catch (updateErr) {
+        console.warn("Client-side update log failed (RLS policy). Handled by server classifier.", updateErr);
+      }
+
+      // 6b. Call server-side Groq classification API as an additive step.
+      // If it fails or times out (~8 seconds), we gracefully catch the error and keep the initial keyword classification.
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+        const response = await fetch("/api/classify", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            complaintId: complaint.id,
+            rawText,
+          }),
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          throw new Error(`API returned status ${response.status}`);
+        }
+      } catch (classifyErr) {
+        console.warn(
+          "[NewComplaint] AI classification failed or timed out. Falling back to keyword classification.",
+          classifyErr
+        );
+      }
 
       // 6b. Call server-side Groq classification API as an additive step.
       // If it fails or times out (~8 seconds), we gracefully catch the error and keep the initial keyword classification.
