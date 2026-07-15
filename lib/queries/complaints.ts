@@ -626,3 +626,47 @@ export async function getClusterSummaries(
     .filter((c) => c.count >= 1) // route will filter to >=3 before sending to Groq
     .sort((a, b) => b.count - a.count);
 }
+
+// ============================
+// CLUSTER / DUPLICATE QUERIES
+// ============================
+
+/**
+ * Get all complaints that share the same cluster_id as the given complaint,
+ * excluding the complaint itself. Returns a compact set of fields for sidebar display.
+ */
+export async function getClusterComplaints(
+  supabase: SupabaseClient,
+  clusterId: string,
+  excludeId: string
+): Promise<
+  Array<{
+    id: string;
+    raw_text: string;
+    created_at: string;
+    priority: string | null;
+    status: string;
+    is_duplicate: boolean;
+  }>
+> {
+  const { data, error } = await supabase
+    .from("complaints")
+    .select("id, raw_text, created_at, priority, status, is_duplicate")
+    .eq("cluster_id", clusterId)
+    .neq("id", excludeId)
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    console.error("Error fetching cluster complaints:", error);
+    return [];
+  }
+
+  return (data ?? []) as Array<{
+    id: string;
+    raw_text: string;
+    created_at: string;
+    priority: string | null;
+    status: string;
+    is_duplicate: boolean;
+  }>;
+}

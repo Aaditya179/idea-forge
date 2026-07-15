@@ -1,8 +1,10 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/queries/profiles";
 import { getCitizenComplaints } from "@/lib/queries/complaints";
 import StatusBadge from "@/components/StatusBadge";
+import DuplicateBanner from "@/components/DuplicateBanner";
 import type { ComplaintStatus } from "@/lib/types";
 
 export default async function CitizenDashboard() {
@@ -15,6 +17,11 @@ export default async function CitizenDashboard() {
 
   return (
     <>
+      {/* Post-submission duplicate banner — reads ?similar=N from URL */}
+      <Suspense fallback={null}>
+        <DuplicateBanner />
+      </Suspense>
+
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
@@ -68,10 +75,15 @@ export default async function CitizenDashboard() {
                   <p className="text-sm font-medium text-text-primary line-clamp-2 group-hover:text-primary-700 transition-colors">
                     {complaint.raw_text}
                   </p>
-                  <div className="flex items-center gap-3 mt-2.5">
+                  <div className="flex items-center gap-3 mt-2.5 flex-wrap">
                     {complaint.category && (
                       <span className="text-xs font-medium text-text-muted bg-surface-overlay px-2 py-0.5 rounded-md">
                         {complaint.category}
+                      </span>
+                    )}
+                    {complaint.cluster_id && (
+                      <span className="inline-flex items-center gap-1 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-md">
+                        🔗 Clustered
                       </span>
                     )}
                     <span className="text-xs text-text-muted">

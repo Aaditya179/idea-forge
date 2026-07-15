@@ -39,6 +39,10 @@ export interface Complaint {
   image_url: string | null;
   latitude: number | null;
   longitude: number | null;
+  // Duplicate / cluster detection columns
+  cluster_id: string | null;
+  is_duplicate: boolean;
+  duplicate_of: string | null;
   created_at: string;
   updated_at: string;
   // Joined fields (optional, present when queries join)

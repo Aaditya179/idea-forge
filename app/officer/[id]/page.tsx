@@ -10,12 +10,15 @@ import {
   getComplaintUpdates,
   updateComplaintStatus,
   createComplaintUpdate,
+  getClusterComplaints,
 } from "@/lib/queries/complaints";
 import StatusBadge from "@/components/StatusBadge";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import ErrorMessage from "@/components/ErrorMessage";
 import AISummaryCard from "@/components/officer/AISummaryCard";
 import SuggestedActionCard from "@/components/officer/SuggestedActionCard";
+import ComplaintsMapLoader from "@/components/admin/ComplaintsMapLoader";
+import type { ComplaintMapPoint } from "@/lib/queries/complaints";
 import type { Complaint, ComplaintUpdate as ComplaintUpdateType, ComplaintStatus } from "@/lib/types";
 
 const STATUS_OPTIONS: ComplaintStatus[] = [
@@ -46,6 +49,16 @@ export default function OfficerComplaintDetailPage() {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
 
+  // Cluster / duplicate panel
+  const [clusterComplaints, setClusterComplaints] = useState<Array<{
+    id: string;
+    raw_text: string;
+    created_at: string;
+    priority: string | null;
+    status: string;
+    is_duplicate: boolean;
+  }>>([]);
+
   // Status update form
   const [newStatus, setNewStatus] = useState<ComplaintStatus>("in_review");
   const [updateNote, setUpdateNote] = useState("");
@@ -63,6 +76,14 @@ export default function OfficerComplaintDetailPage() {
     }
     setComplaint(c);
     setNewStatus(c.status as ComplaintStatus);
+
+    // Fetch other complaints sharing the same cluster_id (if any)
+    if (c.cluster_id) {
+      const clusterData = await getClusterComplaints(supabase, c.cluster_id, c.id);
+      setClusterComplaints(clusterData);
+    } else {
+      setClusterComplaints([]);
+    }
 
     const u = await getComplaintUpdates(supabase, id);
     setUpdates(u);
@@ -258,6 +279,31 @@ export default function OfficerComplaintDetailPage() {
             </div>
           </div>
 
+          {/* Location map */}
+          <div className="bg-white rounded-xl border border-border p-6">
+            <h2 className="text-lg font-bold text-text-primary mb-4">Location</h2>
+            {complaint.latitude != null && complaint.longitude != null ? (
+              <div className="rounded-lg overflow-hidden border border-border">
+                <ComplaintsMapLoader
+                  points={[
+                    {
+                      id: complaint.id,
+                      latitude: complaint.latitude,
+                      longitude: complaint.longitude,
+                      category: complaint.category,
+                      department_name: complaint.departments?.name || "Unassigned",
+                      status: complaint.status,
+                    } satisfies ComplaintMapPoint,
+                  ]}
+                />
+              </div>
+            ) : (
+              <div className="h-[200px] flex items-center justify-center rounded-lg border border-dashed border-border bg-surface-raised">
+                <p className="text-sm text-text-muted">Location unavailable</p>
+              </div>
+            )}
+          </div>
+
           {/* Status update form */}
           <div className="bg-white rounded-xl border border-border p-6">
             <h2 className="text-lg font-bold text-text-primary mb-4">Update Status</h2>
@@ -308,6 +354,60 @@ export default function OfficerComplaintDetailPage() {
 
         {/* Timeline sidebar */}
         <div className="lg:col-span-1 space-y-6">
+          {/* Related Complaints — complaints sharing the same cluster_id */}
+          {clusterComplaints.length > 0 && (
+            <div className="bg-white rounded-xl border border-border p-6">
+              <h2 className="text-lg font-bold text-text-primary mb-4 flex items-center gap-2">
+                <svg className="w-5 h-5 text-violet-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                Related Complaints
+                <span className="ml-auto text-xs font-semibold text-violet-700 bg-violet-50 border border-violet-200 px-2 py-0.5 rounded-full">
+                  🔗 {clusterComplaints.length} in cluster
+                </span>
+              </h2>
+              <div className="space-y-3">
+                {clusterComplaints.map((c) => (
+                  <a
+                    key={c.id}
+                    href={`/officer/${c.id}`}
+                    className="block p-3 rounded-lg border border-border hover:border-violet-300 hover:bg-violet-50/40 transition-all group"
+                  >
+                    <p className="text-xs text-text-primary font-medium line-clamp-2 group-hover:text-violet-700 transition-colors">
+                      {c.raw_text}
+                    </p>
+                    <div className="flex items-center gap-2 mt-2 flex-wrap">
+                      {c.priority && (
+                        <span className={`text-[11px] font-semibold px-1.5 py-0.5 rounded ${
+                          c.priority === "high"
+                            ? "bg-red-100 text-red-700"
+                            : c.priority === "medium"
+                            ? "bg-amber-100 text-amber-700"
+                            : "bg-slate-100 text-slate-600"
+                        }`}>
+                          {c.priority}
+                        </span>
+                      )}
+                      {!c.is_duplicate && (
+                        <span className="text-[11px] font-semibold px-1.5 py-0.5 rounded bg-violet-100 text-violet-700">
+                          primary
+                        </span>
+                      )}
+                      <span className="text-[11px] text-text-muted">
+                        {new Date(c.created_at).toLocaleDateString("en-IN", {
+                          day: "numeric",
+                          month: "short",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
+                    </div>
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* AI Summary */}
           <AISummaryCard
             summary={aiAnalysis?.summary || ""}
