@@ -14,6 +14,8 @@ import {
 import StatusBadge from "@/components/StatusBadge";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import ErrorMessage from "@/components/ErrorMessage";
+import AISummaryCard from "@/components/officer/AISummaryCard";
+import SuggestedActionCard from "@/components/officer/SuggestedActionCard";
 import type { Complaint, ComplaintUpdate as ComplaintUpdateType, ComplaintStatus } from "@/lib/types";
 
 const STATUS_OPTIONS: ComplaintStatus[] = [
@@ -34,6 +36,15 @@ export default function OfficerComplaintDetailPage() {
   const [updates, setUpdates] = useState<ComplaintUpdateType[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  // AI Analysis state
+  const [aiAnalysis, setAiAnalysis] = useState<{
+    summary: string;
+    suggestedAction: string;
+    confidence: "high" | "medium" | "low";
+  } | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   // Status update form
   const [newStatus, setNewStatus] = useState<ComplaintStatus>("in_review");
@@ -56,7 +67,65 @@ export default function OfficerComplaintDetailPage() {
     const u = await getComplaintUpdates(supabase, id);
     setUpdates(u);
     setLoading(false);
+
+    // Trigger AI analysis after data is loaded
+    if (c) {
+      fetchAIAnalysis(c, u);
+    }
   }, [supabase, id]);
+
+  const fetchAIAnalysis = async (complaint: Complaint, updates: ComplaintUpdateType[]) => {
+    setAiLoading(true);
+    setAiError(null);
+
+    try {
+      const daysSinceSubmitted = Math.floor(
+        (Date.now() - new Date(complaint.created_at).getTime()) / (1000 * 60 * 60 * 24)
+      );
+
+      const response = await fetch("/api/analyze-complaint", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          complaintText: complaint.raw_text,
+          category: complaint.category,
+          status: complaint.status,
+          location: complaint.location_text,
+          priority: complaint.priority,
+          timelineLength: updates.length,
+          daysSinceSubmitted,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to analyze complaint");
+      }
+
+      const data = await response.json();
+      if (data.success) {
+        setAiAnalysis({
+          summary: data.summary,
+          suggestedAction: data.suggestedAction,
+          confidence: data.confidence,
+        });
+      } else {
+        throw new Error(data.error || "Analysis failed");
+      }
+    } catch (err) {
+      console.error("AI Analysis error:", err);
+      setAiError(err instanceof Error ? err.message : "Analysis failed");
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const retryAIAnalysis = () => {
+    if (complaint && updates) {
+      fetchAIAnalysis(complaint, updates);
+    }
+  };
 
   useEffect(() => {
     fetchData();
@@ -238,7 +307,26 @@ export default function OfficerComplaintDetailPage() {
         </div>
 
         {/* Timeline sidebar */}
-        <div className="lg:col-span-1">
+        <div className="lg:col-span-1 space-y-6">
+          {/* AI Summary */}
+          <AISummaryCard
+            summary={aiAnalysis?.summary || ""}
+            confidence={aiAnalysis?.confidence || "medium"}
+            loading={aiLoading}
+            error={aiError}
+            onRetry={retryAIAnalysis}
+          />
+
+          {/* Suggested Action */}
+          <SuggestedActionCard
+            suggestedAction={aiAnalysis?.suggestedAction || ""}
+            confidence={aiAnalysis?.confidence || "medium"}
+            loading={aiLoading}
+            error={aiError}
+            onRetry={retryAIAnalysis}
+          />
+
+          {/* Timeline */}
           <div className="bg-white rounded-xl border border-border p-6">
             <h2 className="text-lg font-bold text-text-primary mb-4">Timeline</h2>
 
