@@ -6,10 +6,11 @@ import { createClient } from "@/lib/supabase/client";
 import { getCurrentProfile } from "@/lib/queries/profiles";
 import { getOfficerComplaints } from "@/lib/queries/complaints";
 import StatusBadge from "@/components/StatusBadge";
+import PriorityBadge from "@/components/PriorityBadge";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import ErrorMessage from "@/components/ErrorMessage";
 import KPIGrid from "@/components/officer/KPIGrid";
-import type { Complaint, ComplaintStatus, Profile } from "@/lib/types";
+import type { Complaint, ComplaintStatus, Profile, Priority } from "@/lib/types";
 
 const STATUS_OPTIONS: { value: ComplaintStatus | "all"; label: string }[] = [
   { value: "all", label: "All Statuses" },
@@ -28,6 +29,28 @@ export default function OfficerDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  // Priority queue sorting function
+  const sortComplaintsByPriority = (complaints: Complaint[]): Complaint[] => {
+    const priorityOrder: { [key: string]: number } = {
+      'high': 3,
+      'medium': 2,
+      'low': 1
+    };
+
+    return [...complaints].sort((a, b) => {
+      // First sort by priority (high to low)
+      const aPriority = a.priority ? priorityOrder[a.priority] : 0;
+      const bPriority = b.priority ? priorityOrder[b.priority] : 0;
+      
+      if (aPriority !== bPriority) {
+        return bPriority - aPriority; // Higher priority first
+      }
+      
+      // Within same priority, sort by created_at descending (newest first)
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+  };
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError("");
@@ -41,7 +64,7 @@ export default function OfficerDashboard() {
     setProfile(p);
 
     const data = await getOfficerComplaints(supabase, p.department_id, statusFilter);
-    setComplaints(data);
+    setComplaints(sortComplaintsByPriority(data));
     setLoading(false);
   }, [supabase, statusFilter]);
 
@@ -111,6 +134,9 @@ export default function OfficerDashboard() {
                     Citizen
                   </th>
                   <th className="text-left text-xs font-semibold text-text-muted uppercase tracking-wider px-5 py-3">
+                    Priority
+                  </th>
+                  <th className="text-left text-xs font-semibold text-text-muted uppercase tracking-wider px-5 py-3">
                     Status
                   </th>
                   <th className="text-left text-xs font-semibold text-text-muted uppercase tracking-wider px-5 py-3">
@@ -137,6 +163,9 @@ export default function OfficerDashboard() {
                     </td>
                     <td className="px-5 py-4 text-sm text-text-secondary">
                       {(complaint.profiles as unknown as { full_name: string })?.full_name || "—"}
+                    </td>
+                    <td className="px-5 py-4">
+                      <PriorityBadge priority={complaint.priority as Priority | null} />
                     </td>
                     <td className="px-5 py-4">
                       <StatusBadge status={complaint.status as ComplaintStatus} />
