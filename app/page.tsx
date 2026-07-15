@@ -1,33 +1,22 @@
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import React from "react";
+import LandingNavbar from "@/components/landing/LandingNavbar";
+import HeroSection from "@/components/landing/HeroSection";
+import ProblemSection from "@/components/landing/ProblemSection";
+import HowItWorksSection from "@/components/landing/HowItWorksSection";
+import FeaturesGridSection from "@/components/landing/FeaturesGridSection";
+import ImpactStatsSection from "@/components/landing/ImpactStatsSection";
+import LandingFooter from "@/components/landing/LandingFooter";
 
-export default async function Home() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/login");
-  }
-
-  // Fetch role and redirect accordingly
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-
-  if (profile) {
-    switch (profile.role) {
-      case "admin":
-        redirect("/admin");
-      case "officer":
-        redirect("/officer");
-      default:
-        redirect("/citizen");
-    }
-  }
-
-  redirect("/login");
+export default function Home() {
+  return (
+    <main className="min-h-screen flex flex-col bg-[#0F172A] selection:bg-[#F59E0B] selection:text-[#0F172A]">
+      <LandingNavbar />
+      <HeroSection />
+      <ProblemSection />
+      <HowItWorksSection />
+      <FeaturesGridSection />
+      <ImpactStatsSection />
+      <LandingFooter />
+    </main>
+  );
 }
