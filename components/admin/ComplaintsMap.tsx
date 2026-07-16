@@ -23,11 +23,14 @@ const PRIORITY_WEIGHT: Record<string, number> = {
 
 /** Snapchat-style gradient: Blue → Green → Yellow → Orange → Red */
 const HEATMAP_GRADIENT: Record<number, string> = {
-    0.2: "#0033ff",
-    0.4: "#00ff66",
-    0.6: "#ffff00",
-    0.8: "#ff9900",
-    1.0: "#ff0000",
+    0.15: "#0044ff",
+    0.30: "#00ccff",
+    0.45: "#00ff66",
+    0.55: "#aaff00",
+    0.65: "#ffff00",
+    0.78: "#ffaa00",
+    0.90: "#ff4400",
+    1.0:  "#ff0000",
 };
 
 type ViewMode = "markers" | "heatmap";
@@ -43,11 +46,11 @@ function HeatmapLayer({ data }: { data: [number, number, number][] }) {
         if (data.length === 0) return;
 
         const heat = L.heatLayer(data, {
-            radius: 25,
-            blur: 20,
-            maxZoom: 17,
-            max: 1.0,
-            minOpacity: 0.35,
+            radius: 40,
+            blur: 30,
+            maxZoom: 14,
+            max: 0.6,
+            minOpacity: 0.55,
             gradient: HEATMAP_GRADIENT,
         }).addTo(map);
 
