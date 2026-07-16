@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
-import { groq, GROQ_MODEL } from "@/lib/ai/groqClient";
+import { runTriageAgent, TriageResult } from "@/lib/agents/triageAgent";
+import { getDepartmentWorkload } from "@/lib/agents/tools";
 
 // Create a Supabase admin client using the service role key to bypass RLS policies
 // since citizens do not have SQL-level UPDATE access on the complaints table.
@@ -11,7 +12,7 @@ const supabaseAdmin = createSupabaseClient(
 
 export async function POST(request: NextRequest) {
   try {
-    const { complaintId, rawText } = await request.json();
+    let { complaintId, rawText, latitude, longitude } = await request.json();
 
     if (!complaintId || !rawText) {
       return NextResponse.json(
@@ -20,92 +21,102 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Default fallbacks in case classification fails or times out
-    let category = "Other";
-    let priority = "medium";
-    let summary = "Civic grievance submitted";
-
-    try {
-      // 8-second timeout for the Groq API call
-      const response = await Promise.race([
-        groq.chat.completions.create({
-          model: GROQ_MODEL,
-          messages: [
-            {
-              role: "system",
-              content: `You are an AI Civic Assistant. Analyze the user's grievance (which may be in English, Hindi, Marathi, Hinglish, or code-mixed) and classify it.
-You MUST respond with a JSON object in this exact shape:
-{
-  "category": "Water Supply" | "Electricity" | "Roads" | "Sanitation" | "Other",
-  "priority": "low" | "medium" | "high",
-  "summary": "Short 5-8 word summary of the issue"
-}
-Do not return any other text, explanations, or markdown. Only valid JSON.`,
-            },
-            {
-              role: "user",
-              content: rawText,
-            },
-          ],
-          response_format: { type: "json_object" },
-          temperature: 0.1,
-        }),
-        new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error("Groq request timed out")), 8000)
-        ),
-      ]);
-
-      const resultText = response.choices[0]?.message?.content;
-      if (resultText) {
-        const parsed = JSON.parse(resultText);
-        if (parsed.category) category = parsed.category;
-        if (parsed.priority) priority = parsed.priority;
-        if (parsed.summary) summary = parsed.summary;
-      }
-    } catch (apiErr) {
-      console.error("[Classifier API] Groq processing failed, using fallbacks:", apiErr);
-    }
-
-    // Resolve department ID from category name
-    let { data: department } = await supabaseAdmin
-      .from("departments")
-      .select("id")
-      .eq("name", category)
-      .single();
-
-    // Fallback to "Other" department if the returned category wasn't found
-    if (!department) {
-      const { data: fallbackDept } = await supabaseAdmin
-        .from("departments")
-        .select("id")
-        .eq("name", "Other")
+    // If coordinates weren't supplied in request body, read them from the DB row
+    if (typeof latitude !== "number" || typeof longitude !== "number") {
+      const { data: cRow } = await supabaseAdmin
+        .from("complaints")
+        .select("latitude, longitude, raw_text")
+        .eq("id", complaintId)
         .single();
-      department = fallbackDept;
-      category = "Other";
+      if (cRow) {
+        if (typeof latitude !== "number" && typeof cRow.latitude === "number") {
+          latitude = cRow.latitude;
+        }
+        if (typeof longitude !== "number" && typeof cRow.longitude === "number") {
+          longitude = cRow.longitude;
+        }
+        if (!rawText && cRow.raw_text) {
+          rawText = cRow.raw_text;
+        }
+      }
     }
 
-    // Update complaint category, department_id, and priority
-    const { error: updateErr } = await supabaseAdmin
+    const lat = typeof latitude === "number" && !isNaN(latitude) ? latitude : 18.5204;
+    const lng = typeof longitude === "number" && !isNaN(longitude) ? longitude : 73.8567;
+
+    console.log(`[Classifier API] Running agentic triage for complaint ${complaintId}...`);
+
+    let triageResult: TriageResult;
+    try {
+      triageResult = await runTriageAgent(complaintId, rawText, lat, lng);
+    } catch (agentErr) {
+      console.error("[Classifier API] runTriageAgent threw unexpected exception, using direct fallback:", agentErr);
+      triageResult = {
+        category: "Other",
+        department_id: null,
+        priority: "medium",
+        reasoning: "Classified via emergency fallback after triage agent error.",
+        is_duplicate_of: null,
+        escalated: false,
+      };
+      try {
+        const deptInfo = await getDepartmentWorkload("Other");
+        triageResult.department_id = deptInfo.department_id || null;
+      } catch {
+        // ignore
+      }
+    }
+
+    // Update complaint row with triage results
+    const fullPayload: Record<string, any> = {
+      category: triageResult.category,
+      department_id: triageResult.department_id || null,
+      priority: triageResult.priority,
+      ai_reasoning: triageResult.reasoning || null,
+      is_duplicate_of: triageResult.is_duplicate_of || null,
+    };
+
+    let { error: updateErr } = await supabaseAdmin
       .from("complaints")
-      .update({
-        category,
-        department_id: department?.id || null,
-        priority,
-      })
+      .update(fullPayload)
       .eq("id", complaintId);
+
+    // If ai_reasoning / is_duplicate_of columns don't exist yet in DB (pre-migration run), retry without them
+    if (
+      updateErr &&
+      updateErr.message &&
+      (updateErr.message.includes("column") || updateErr.message.includes("schema")) &&
+      (updateErr.message.includes("ai_reasoning") ||
+        updateErr.message.includes("is_duplicate_of") ||
+        updateErr.message.includes("does not exist"))
+    ) {
+      console.warn(
+        "[Classifier API] Columns ai_reasoning/is_duplicate_of not found in DB schema yet. Updating basic fields without them."
+      );
+      const basicPayload = {
+        category: triageResult.category,
+        department_id: triageResult.department_id || null,
+        priority: triageResult.priority,
+      };
+      const retryResult = await supabaseAdmin
+        .from("complaints")
+        .update(basicPayload)
+        .eq("id", complaintId);
+      updateErr = retryResult.error;
+    }
 
     if (updateErr) {
       throw updateErr;
     }
 
-    // Retrieve the user ID of the complaint to set updated_by (optional, but good practice)
+    // Retrieve user_id for setting updated_by
     const { data: complaintData } = await supabaseAdmin
       .from("complaints")
       .select("user_id")
       .eq("id", complaintId)
       .single();
 
-    // Insert initial "Complaint submitted" update using admin client to bypass the citizen RLS bug
+    // Insert initial "Complaint submitted" update using admin client if not already present
     await supabaseAdmin.from("complaint_updates").insert({
       complaint_id: complaintId,
       note: "Complaint submitted",
@@ -113,19 +124,28 @@ Do not return any other text, explanations, or markdown. Only valid JSON.`,
       updated_by: complaintData?.user_id || null,
     });
 
-    // Insert complaint_updates row indicating classification success
+    // Insert complaint_updates row indicating classification & triage reasoning
+    const updateNote = `Classified by AI: ${triageResult.category}, Priority: ${triageResult.priority}${
+      triageResult.reasoning ? ` (${triageResult.reasoning})` : ""
+    }`;
+
     await supabaseAdmin.from("complaint_updates").insert({
       complaint_id: complaintId,
-      note: `Classified by AI: ${category}, Priority: ${priority}`,
+      note: updateNote,
       status_at_time: "submitted",
       updated_by: complaintData?.user_id || null,
     });
 
     return NextResponse.json({
       success: true,
-      category,
-      priority,
-      summary,
+      category: triageResult.category,
+      department_id: triageResult.department_id || null,
+      priority: triageResult.priority,
+      summary: triageResult.reasoning,
+      ai_reasoning: triageResult.reasoning,
+      is_duplicate_of: triageResult.is_duplicate_of,
+      escalated: triageResult.escalated,
+      toolCallsTrace: triageResult.toolCallsTrace,
     });
   } catch (err) {
     console.error("[Classifier API] Unexpected error:", err);
