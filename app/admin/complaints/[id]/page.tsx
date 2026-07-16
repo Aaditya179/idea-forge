@@ -10,6 +10,7 @@ import {
     updateComplaintStatus,
 } from '@/lib/queries/complaints';
 import { getProfileById } from '@/lib/queries/profiles';
+import { getReferenceNumber } from '@/lib/utils/referenceNumber';
 
 interface PageProps {
     params: Promise<{ id: string }>;
@@ -218,8 +219,12 @@ export default async function AdminComplaintDetailPage({ params }: PageProps) {
                 <div className="bg-white rounded-2xl shadow-sm border border-[#e6dfd3] p-6 mb-8 flex flex-col sm:flex-row justify-between items-start gap-4">
                     <div>
                         <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-[#1c1917]">Executive Investigation Hub</h1>
-                        <p className="text-[#4a423a] text-sm mt-1.5">
-                            Complaint ID: <span className="font-mono bg-[#faf6f0] border border-[#e6dfd3] px-2 py-0.5 rounded text-xs text-[#1c1917]">{id}</span>
+                        <p className="text-[#4a423a] text-sm mt-1.5 flex items-center gap-3 flex-wrap">
+                            <span>Complaint ID: <span className="font-mono bg-[#faf6f0] border border-[#e6dfd3] px-2 py-0.5 rounded text-xs text-[#1c1917]">{id}</span></span>
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-[#faf6f0] border border-[#e6dfd3] text-xs font-mono font-bold text-[#c86d28]">
+                                <span>Reference No.</span>
+                                <span className="text-[#1c1917]">{getReferenceNumber(id)}</span>
+                            </span>
                         </p>
                     </div>
                     <div className="flex flex-col items-end gap-2 shrink-0">

@@ -5,6 +5,7 @@ import { getComplaintById, getComplaintUpdates } from "@/lib/queries/complaints"
 import StatusBadge from "@/components/StatusBadge";
 import type { ComplaintStatus } from "@/lib/types";
 import { ArrowLeft, MapPin, Tag, Building2, Calendar, Image as ImageIcon, Sparkles, CheckCircle2 } from "lucide-react";
+import { getReferenceNumber } from "@/lib/utils/referenceNumber";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -153,6 +154,10 @@ export default async function CitizenComplaintDetailPage({ params }: PageProps) 
                   Grievance Record
                 </span>
                 <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#1c1917]">Complaint Details</h1>
+                <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#faf6f0] border border-[#e6dfd3] text-xs font-mono font-bold text-[#c86d28]">
+                  <span>Reference No.</span>
+                  <span className="text-[#1c1917]">{getReferenceNumber(complaint.id)}</span>
+                </div>
               </div>
               <StatusBadge status={complaint.status as ComplaintStatus} />
             </div>
