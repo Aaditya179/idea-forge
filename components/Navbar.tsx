@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { UserRole } from "@/lib/types";
 import { Scale, Globe, LogOut } from "lucide-react";
+import NotificationBell from "@/components/NotificationBell";
 
 interface NavbarProps {
   role: UserRole;
@@ -77,6 +78,8 @@ export default function Navbar({ role, fullName, departmentName }: NavbarProps) 
 
           {/* Right side */}
           <div className="flex items-center gap-4">
+            {role === "citizen" && <NotificationBell />}
+
             {(role === "officer" || role === "admin") && (
               <div className="flex flex-col text-right hidden sm:block">
                 <span className="text-sm font-semibold text-[#1c1917] leading-tight">{fullName}</span>
