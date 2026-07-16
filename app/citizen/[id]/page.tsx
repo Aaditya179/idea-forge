@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getComplaintById, getComplaintUpdates } from "@/lib/queries/complaints";
 import StatusBadge from "@/components/StatusBadge";
 import type { ComplaintStatus } from "@/lib/types";
+import { ArrowLeft, MapPin, Tag, Building2, Calendar, Image as ImageIcon } from "lucide-react";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -42,11 +43,9 @@ export default async function CitizenComplaintDetailPage({ params }: PageProps) 
       {/* Back link */}
       <Link
         href="/citizen"
-        className="inline-flex items-center gap-1.5 text-sm text-text-secondary hover:text-primary-600 mb-6 transition-colors"
+        className="inline-flex items-center gap-1.5 text-sm text-[#78716C] hover:text-[#B45309] mb-6 transition-colors"
       >
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-        </svg>
+        <ArrowLeft className="w-4 h-4" />
         Back to My Complaints
       </Link>
 
@@ -56,7 +55,7 @@ export default async function CitizenComplaintDetailPage({ params }: PageProps) 
 
           {/* ── AI-Verified Resolution Certificate (only if passed audit) ── */}
           {isVerifiedResolution && (
-            <div className="rounded-xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-white overflow-hidden shadow-sm">
+            <div className="rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-white overflow-hidden shadow-sm">
               {/* Header */}
               <div className="px-6 py-4 border-b border-emerald-100 flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-xl">
@@ -75,20 +74,20 @@ export default async function CitizenComplaintDetailPage({ params }: PageProps) 
 
               {/* Photo comparison */}
               <div className="p-6">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">Resolution Proof</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-[#A8A29E] mb-3">Resolution Proof</p>
                 <div className="grid grid-cols-2 gap-4">
                   {/* Before */}
                   <div className="space-y-2">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Before</p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-[#A8A29E]">Before</p>
                     {complaint.image_url ? (
                       <img
                         src={complaint.image_url}
                         alt="Original complaint"
-                        className="w-full h-44 object-cover rounded-lg border border-slate-200"
+                        className="w-full h-44 object-cover rounded-xl border border-[#E7E0D8]"
                       />
                     ) : (
-                      <div className="w-full h-44 rounded-lg border border-dashed border-slate-200 bg-slate-50 flex items-center justify-center">
-                        <p className="text-xs text-slate-400 text-center px-4">No photo attached<br />to original complaint</p>
+                      <div className="w-full h-44 rounded-xl border border-dashed border-[#E7E0D8] bg-[#FAF5EE] flex items-center justify-center">
+                        <p className="text-xs text-[#A8A29E] text-center px-4">No photo attached<br />to original complaint</p>
                       </div>
                     )}
                   </div>
@@ -102,7 +101,7 @@ export default async function CitizenComplaintDetailPage({ params }: PageProps) 
                       <img
                         src={afterImageUrl!}
                         alt="Resolution proof"
-                        className="w-full h-44 object-cover rounded-lg border border-emerald-300 shadow-sm"
+                        className="w-full h-44 object-cover rounded-xl border border-emerald-300 shadow-sm"
                       />
                       {/* Verified watermark badge */}
                       <div className="absolute top-2 right-2 flex items-center gap-1 bg-emerald-600 text-white px-2 py-0.5 rounded-full text-[10px] font-bold shadow-sm">
@@ -114,12 +113,12 @@ export default async function CitizenComplaintDetailPage({ params }: PageProps) 
 
                 {/* AI audit trail excerpt */}
                 {resolvedUpdate && (
-                  <div className="mt-4 rounded-lg border border-emerald-100 bg-white px-4 py-3">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">AI Auditor Verdict</p>
-                    <p className="text-sm text-slate-600 leading-relaxed">
+                  <div className="mt-4 rounded-xl border border-emerald-100 bg-white px-4 py-3">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-[#A8A29E] mb-1">AI Auditor Verdict</p>
+                    <p className="text-sm text-[#78716C] leading-relaxed">
                       {cleanNote(resolvedUpdate.note)}
                     </p>
-                    <p className="text-xs text-slate-400 mt-1.5">
+                    <p className="text-xs text-[#A8A29E] mt-1.5">
                       Closed on{" "}
                       {new Date(resolvedUpdate.created_at).toLocaleDateString("en-IN", {
                         day: "numeric", month: "long", year: "numeric",
@@ -134,7 +133,7 @@ export default async function CitizenComplaintDetailPage({ params }: PageProps) 
 
           {/* ── Standard resolved state (no after photo) ── */}
           {complaint.status === "resolved" && !isVerifiedResolution && (
-            <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-6 py-4 flex items-center gap-3">
+            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-6 py-4 flex items-center gap-3">
               <span className="text-2xl">✅</span>
               <div>
                 <p className="text-sm font-bold text-emerald-800">Issue Resolved</p>
@@ -144,55 +143,72 @@ export default async function CitizenComplaintDetailPage({ params }: PageProps) 
           )}
 
           {/* Complaint details card */}
-          <div className="bg-white rounded-xl border border-border p-6">
-            <div className="flex items-start justify-between gap-4 mb-4">
-              <h1 className="text-xl font-bold text-text-primary">Complaint Details</h1>
+          <div className="bg-white rounded-2xl border border-[#E7E0D8] p-6 shadow-sm">
+            <div className="flex items-start justify-between gap-4 mb-6">
+              <h1 className="text-xl font-bold text-[#1C1917]">Complaint Details</h1>
               <StatusBadge status={complaint.status as ComplaintStatus} />
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-5">
+              {/* Description */}
               <div>
-                <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-1.5">Description</h3>
-                <p className="text-sm text-text-primary leading-relaxed whitespace-pre-wrap">{complaint.raw_text}</p>
+                <h3 className="text-xs font-semibold text-[#A8A29E] uppercase tracking-wider mb-2">Description</h3>
+                <p className="text-sm text-[#1C1917] leading-relaxed whitespace-pre-wrap">{complaint.raw_text}</p>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              {/* Metadata grid */}
+              <div className="grid grid-cols-2 gap-4 pt-4 border-t border-[#E7E0D8]">
                 {complaint.category && (
-                  <div>
-                    <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-1">Category</h3>
-                    <p className="text-sm font-medium text-text-primary">{complaint.category}</p>
+                  <div className="flex items-start gap-2">
+                    <Tag className="w-4 h-4 text-[#B45309] mt-0.5 shrink-0" />
+                    <div>
+                      <h3 className="text-xs font-semibold text-[#A8A29E] uppercase tracking-wider mb-1">Category</h3>
+                      <p className="text-sm font-medium text-[#1C1917]">{complaint.category}</p>
+                    </div>
                   </div>
                 )}
-                <div>
-                  <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-1">Department</h3>
-                  <p className="text-sm font-medium text-text-primary">
-                    {(complaint.departments as unknown as { name: string })?.name || "—"}
-                  </p>
+                <div className="flex items-start gap-2">
+                  <Building2 className="w-4 h-4 text-[#B45309] mt-0.5 shrink-0" />
+                  <div>
+                    <h3 className="text-xs font-semibold text-[#A8A29E] uppercase tracking-wider mb-1">Department</h3>
+                    <p className="text-sm font-medium text-[#1C1917]">
+                      {(complaint.departments as unknown as { name: string })?.name || "—"}
+                    </p>
+                  </div>
                 </div>
                 {complaint.location_text && (
-                  <div>
-                    <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-1">Location</h3>
-                    <p className="text-sm font-medium text-text-primary">{complaint.location_text}</p>
+                  <div className="flex items-start gap-2">
+                    <MapPin className="w-4 h-4 text-[#B45309] mt-0.5 shrink-0" />
+                    <div>
+                      <h3 className="text-xs font-semibold text-[#A8A29E] uppercase tracking-wider mb-1">Location</h3>
+                      <p className="text-sm font-medium text-[#1C1917]">{complaint.location_text}</p>
+                    </div>
                   </div>
                 )}
-                <div>
-                  <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-1">Submitted</h3>
-                  <p className="text-sm font-medium text-text-primary">
-                    {new Date(complaint.created_at).toLocaleDateString("en-IN", {
-                      day: "numeric", month: "long", year: "numeric",
-                      hour: "2-digit", minute: "2-digit",
-                    })}
-                  </p>
+                <div className="flex items-start gap-2">
+                  <Calendar className="w-4 h-4 text-[#B45309] mt-0.5 shrink-0" />
+                  <div>
+                    <h3 className="text-xs font-semibold text-[#A8A29E] uppercase tracking-wider mb-1">Submitted</h3>
+                    <p className="text-sm font-medium text-[#1C1917]">
+                      {new Date(complaint.created_at).toLocaleDateString("en-IN", {
+                        day: "numeric", month: "long", year: "numeric",
+                        hour: "2-digit", minute: "2-digit",
+                      })}
+                    </p>
+                  </div>
                 </div>
               </div>
 
               {complaint.image_url && (
-                <div>
-                  <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">Your Attached Photo</h3>
+                <div className="pt-4 border-t border-[#E7E0D8]">
+                  <div className="flex items-center gap-2 mb-2">
+                    <ImageIcon className="w-4 h-4 text-[#B45309]" />
+                    <h3 className="text-xs font-semibold text-[#A8A29E] uppercase tracking-wider">Your Attached Photo</h3>
+                  </div>
                   <img
                     src={complaint.image_url}
                     alt="Complaint attachment"
-                    className="rounded-lg border border-border max-h-64 object-cover"
+                    className="rounded-xl border border-[#E7E0D8] max-h-64 object-cover"
                   />
                 </div>
               )}
@@ -202,11 +218,11 @@ export default async function CitizenComplaintDetailPage({ params }: PageProps) 
 
         {/* ── Timeline sidebar ──────────────────────────────────────────────── */}
         <div className="lg:col-span-1">
-          <div className="bg-white rounded-xl border border-border p-6">
-            <h2 className="text-lg font-bold text-text-primary mb-4">Timeline</h2>
+          <div className="bg-white rounded-2xl border border-[#E7E0D8] p-6 shadow-sm">
+            <h2 className="text-lg font-bold text-[#1C1917] mb-5">Timeline</h2>
 
             {updates.length === 0 ? (
-              <p className="text-sm text-text-muted">No updates yet.</p>
+              <p className="text-sm text-[#A8A29E]">No updates yet.</p>
             ) : (
               <div className="space-y-0">
                 {updates.map((update, idx) => {
@@ -216,13 +232,13 @@ export default async function CitizenComplaintDetailPage({ params }: PageProps) 
                   return (
                     <div key={update.id} className="relative flex gap-3">
                       {idx < updates.length - 1 && (
-                        <div className="absolute left-[7px] top-5 bottom-0 w-px bg-border" />
+                        <div className="absolute left-[7px] top-5 bottom-0 w-px bg-[#E7E0D8]" />
                       )}
                       <div className="relative z-10 mt-1.5 w-[15px] flex-shrink-0 flex items-start justify-center">
-                        <div className={`w-2.5 h-2.5 rounded-full ring-2 ${isResolutionUpdate ? "bg-emerald-500 ring-emerald-100" : "bg-primary-500 ring-primary-100"}`} />
+                        <div className={`w-3.5 h-3.5 rounded-full ring-2 ${isResolutionUpdate ? "bg-emerald-500 ring-emerald-100" : "bg-[#B45309] ring-[#FFFBEB]"}`} />
                       </div>
                       <div className="pb-6 flex-1">
-                        <p className="text-sm font-medium text-text-primary">{displayNote}</p>
+                        <p className="text-sm font-medium text-[#1C1917]">{displayNote}</p>
                         {isResolutionUpdate && (
                           <span className="inline-flex items-center gap-1 mt-1.5 text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
                             ✓ AI Verified Resolution
@@ -231,7 +247,7 @@ export default async function CitizenComplaintDetailPage({ params }: PageProps) 
                         <div className="flex items-center gap-2 mt-1">
                           <StatusBadge status={update.status_at_time as ComplaintStatus} />
                         </div>
-                        <p className="text-xs text-text-muted mt-1.5">
+                        <p className="text-xs text-[#A8A29E] mt-1.5">
                           {new Date(update.created_at).toLocaleDateString("en-IN", {
                             day: "numeric", month: "short", year: "numeric",
                             hour: "2-digit", minute: "2-digit",
