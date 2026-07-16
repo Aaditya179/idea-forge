@@ -113,36 +113,38 @@ export default function ComplaintsMap({ points }: { points: ComplaintMapPoint[] 
                 </button>
             </div>
 
-            <MapContainer center={center} zoom={12} style={{ height: "400px", width: "100%" }}>
-                <TileLayer
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                    attribution='&copy; OpenStreetMap contributors'
-                />
+            <div className="relative overflow-hidden" style={{ isolation: "isolate" }}>
+                <MapContainer center={center} zoom={12} style={{ height: "400px", width: "100%" }}>
+                    <TileLayer
+                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                        attribution='&copy; OpenStreetMap contributors'
+                    />
 
-                {viewMode === "markers" &&
-                    points.map((p) => (
-                        <CircleMarker
-                            key={p.id}
-                            center={[p.latitude, p.longitude]}
-                            radius={8}
-                            pathOptions={{
-                                color: STATUS_COLORS[p.status] || "#9ca3af",
-                                fillColor: STATUS_COLORS[p.status] || "#9ca3af",
-                                fillOpacity: 0.6,
-                            }}
-                        >
-                            <Popup>
-                                <div className="text-xs">
-                                    <p className="font-semibold">{p.department_name}</p>
-                                    <p>{p.category || "Uncategorized"}</p>
-                                    <p className="capitalize">{p.status.replace("_", " ")}</p>
-                                </div>
-                            </Popup>
-                        </CircleMarker>
-                    ))}
+                    {viewMode === "markers" &&
+                        points.map((p) => (
+                            <CircleMarker
+                                key={p.id}
+                                center={[p.latitude, p.longitude]}
+                                radius={8}
+                                pathOptions={{
+                                    color: STATUS_COLORS[p.status] || "#9ca3af",
+                                    fillColor: STATUS_COLORS[p.status] || "#9ca3af",
+                                    fillOpacity: 0.6,
+                                }}
+                            >
+                                <Popup>
+                                    <div className="text-xs">
+                                        <p className="font-semibold">{p.department_name}</p>
+                                        <p>{p.category || "Uncategorized"}</p>
+                                        <p className="capitalize">{p.status.replace("_", " ")}</p>
+                                    </div>
+                                </Popup>
+                            </CircleMarker>
+                        ))}
 
-                {viewMode === "heatmap" && <HeatmapLayer data={heatData} />}
-            </MapContainer>
+                    {viewMode === "heatmap" && <HeatmapLayer data={heatData} />}
+                </MapContainer>
+            </div>
         </div>
     );
 }
