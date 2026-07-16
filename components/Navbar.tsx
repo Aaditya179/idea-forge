@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { UserRole } from "@/lib/types";
-import { Scale, Globe, LogOut } from "lucide-react";
+import { LogOut } from "lucide-react";
 
 interface NavbarProps {
   role: UserRole;
