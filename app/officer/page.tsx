@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { getCurrentProfile } from "@/lib/queries/profiles";
 import { getOfficerComplaints } from "@/lib/queries/complaints";
 import StatusBadge from "@/components/StatusBadge";
+import ComplaintsMapLoader from "@/components/admin/ComplaintsMapLoader";
+import type { ComplaintMapPoint } from "@/lib/queries/complaints";
 import PriorityBadge from "@/components/PriorityBadge";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import ErrorMessage from "@/components/ErrorMessage";
@@ -72,6 +74,26 @@ export default function OfficerDashboard() {
     fetchData();
   }, [fetchData]);
 
+  // Derive map points from already-fetched complaints — no additional queries
+  const mapPoints = useMemo<ComplaintMapPoint[]>(
+    () =>
+      complaints
+        .filter((c): c is Complaint & { latitude: number; longitude: number } =>
+          c.latitude != null && c.longitude != null
+        )
+        .map((c) => ({
+          id: c.id,
+          latitude: c.latitude,
+          longitude: c.longitude,
+          category: c.category,
+          department_name:
+            (c.departments as unknown as { name: string })?.name || "Unknown",
+          status: c.status,
+          priority: c.priority,
+        })),
+    [complaints]
+  );
+
   if (loading) return <LoadingSpinner message="Loading complaints..." />;
   if (error) return <ErrorMessage message={error} onRetry={fetchData} />;
 
@@ -103,6 +125,17 @@ export default function OfficerDashboard() {
 
       {/* KPI Cards */}
       <KPIGrid complaints={complaints} className="mb-8" />
+
+      {/* Complaint Density Map */}
+      <div className="mb-8">
+        <div className="bg-white rounded-xl border border-border overflow-hidden">
+          <div className="px-5 py-4 border-b border-border bg-surface-raised">
+            <h2 className="text-base font-bold text-text-primary">Complaint Density Map</h2>
+            <p className="text-xs text-text-muted mt-0.5">Geo-distribution of your department&apos;s complaints</p>
+          </div>
+          <ComplaintsMapLoader points={mapPoints} />
+        </div>
+      </div>
 
       {/* Complaints table */}
       {complaints.length === 0 ? (
