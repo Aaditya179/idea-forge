@@ -40,6 +40,11 @@ const STATUS_OPTIONS: ComplaintStatus[] = [
   "rejected",
 ];
 
+// ── Strip the [AFTER_IMAGE:url] marker from note text ─────────────────────────
+function cleanNote(note: string): string {
+  return note.replace(/\s*\[AFTER_IMAGE:https?:\/\/[^\]]+\]/g, "").trim();
+}
+
 // ── Resolution Auditor Panel ──────────────────────────────────────────────────
 function ResolutionAuditorPanel({
   complaint,
@@ -731,15 +736,15 @@ export default function OfficerComplaintDetailPage() {
             ) : (
               <div className="space-y-0">
                 {updates.map((update, idx) => (
-                  <div key={update.id} className="relative flex gap-3">
+                  <div key={update.id} className="relative flex gap-3 min-w-0">
                     {idx < updates.length - 1 && (
                       <div className="absolute left-[7px] top-5 bottom-0 w-px bg-border" />
                     )}
                     <div className="relative z-10 mt-1.5 w-[15px] flex-shrink-0 flex items-start justify-center">
                       <div className="w-2.5 h-2.5 rounded-full bg-violet-500 ring-2 ring-violet-100" />
                     </div>
-                    <div className="pb-6 flex-1">
-                      <p className="text-sm font-medium text-text-primary">{update.note}</p>
+                    <div className="pb-6 flex-1 min-w-0">
+                      <p className="text-sm font-medium text-text-primary break-words">{cleanNote(update.note)}</p>
                       <div className="flex items-center gap-2 mt-1">
                         <StatusBadge status={update.status_at_time as ComplaintStatus} />
                       </div>
