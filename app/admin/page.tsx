@@ -9,6 +9,7 @@ import {
 } from "@/lib/queries/complaints";
 import { DepartmentBarChart, StatusPieChart } from "@/components/admin/DashboardCharts";
 import { DepartmentPerformanceTable } from "@/components/admin/DepartmentPerformanceTable";
+import { SlaRecoveryCard } from "@/components/admin/SlaRecoveryCard";
 import { RootCausePanel } from "@/components/admin/RootCausePanel";
 
 
@@ -71,6 +72,10 @@ export default async function AdminDashboard() {
 
       <div className="mb-8">
         <DepartmentPerformanceTable data={deptPerformance} />
+      </div>
+
+      <div className="mb-8">
+        <SlaRecoveryCard data={deptPerformance} />
       </div>
 
       <div className="mb-8">
