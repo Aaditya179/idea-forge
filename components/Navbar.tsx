@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { UserRole } from "@/lib/types";
+import { Scale, Globe, LogOut } from "lucide-react";
 
 interface NavbarProps {
   role: UserRole;
@@ -27,10 +28,10 @@ const roleLinks: Record<UserRole, { href: string; label: string }[]> = {
   ],
 };
 
-const roleColors: Record<UserRole, string> = {
-  citizen: "bg-blue-600",
-  officer: "bg-violet-600",
-  admin: "bg-emerald-600",
+const roleBadgeColors: Record<UserRole, string> = {
+  citizen: "bg-[#FFFBEB] text-[#B45309] border border-[#FDE68A]",
+  officer: "bg-[#F3F0FF] text-violet-700 border border-violet-200",
+  admin: "bg-[#ECFDF5] text-emerald-700 border border-emerald-200",
 };
 
 export default function Navbar({ role, fullName }: NavbarProps) {
@@ -44,20 +45,25 @@ export default function Navbar({ role, fullName }: NavbarProps) {
   };
 
   const links = roleLinks[role] || [];
+  const initials = fullName
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
 
   return (
-    <nav className="sticky top-0 z-50 border-b border-border bg-white/80 backdrop-blur-md">
+    <nav className="sticky top-0 z-50 border-b border-[#E7E0D8] bg-white/95 backdrop-blur-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link href={`/${role}`} className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center">
-              <svg className="w-4.5 h-4.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-              </svg>
+          <Link href={`/${role}`} className="flex items-center gap-2.5 shrink-0">
+            <div className="w-8 h-8 rounded-full bg-[#FAF5EE] border border-[#E7E0D8] flex items-center justify-center">
+              <Scale className="w-4 h-4 text-[#B45309]" />
             </div>
-            <span className="text-lg font-bold text-text-primary tracking-tight">
-              CivicPulse
+            <span className="text-[14px] font-extrabold tracking-tight hidden sm:block">
+              <span className="text-[#1C1917]">CIVIC</span>
+              <span className="text-[#B45309]">PULSE</span>
             </span>
           </Link>
 
@@ -67,7 +73,7 @@ export default function Navbar({ role, fullName }: NavbarProps) {
               <Link
                 key={link.href}
                 href={link.href}
-                className="px-3 py-2 rounded-lg text-sm font-medium text-text-secondary hover:text-text-primary hover:bg-surface-overlay transition-colors"
+                className="px-3.5 py-2 rounded-lg text-sm font-medium text-[#78716C] hover:text-[#1C1917] hover:bg-[#FAF5EE] transition-colors"
               >
                 {link.label}
               </Link>
@@ -76,19 +82,31 @@ export default function Navbar({ role, fullName }: NavbarProps) {
 
           {/* Right side */}
           <div className="flex items-center gap-3">
+            {/* Language toggle */}
+            <button className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border border-[#E7E0D8] text-xs font-medium text-[#78716C] hover:border-[#B45309] transition-colors bg-white">
+              <Globe className="w-3.5 h-3.5" />
+              <span>EN</span>
+            </button>
+
+            {/* Role badge + name */}
             <div className="hidden sm:flex items-center gap-2">
-              <span className={`px-2 py-0.5 rounded-md text-xs font-semibold text-white capitalize ${roleColors[role]}`}>
+              <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold capitalize ${roleBadgeColors[role]}`}>
                 {role}
               </span>
-              <span className="text-sm font-medium text-text-secondary">
-                {fullName}
-              </span>
             </div>
+
+            {/* Avatar circle */}
+            <div className="w-8 h-8 rounded-full bg-[#B45309] flex items-center justify-center text-white text-xs font-bold shrink-0">
+              {initials}
+            </div>
+
+            {/* Sign out */}
             <button
               onClick={handleLogout}
-              className="px-3 py-1.5 rounded-lg text-sm font-medium text-text-secondary hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+              className="p-2 rounded-lg text-[#78716C] hover:text-[#C2410C] hover:bg-[#FEF2F2] transition-colors cursor-pointer"
+              title="Sign Out"
             >
-              Sign Out
+              <LogOut className="w-4 h-4" />
             </button>
           </div>
         </div>
@@ -99,7 +117,7 @@ export default function Navbar({ role, fullName }: NavbarProps) {
             <Link
               key={link.href}
               href={link.href}
-              className="px-3 py-1.5 rounded-lg text-sm font-medium text-text-secondary hover:text-text-primary hover:bg-surface-overlay transition-colors whitespace-nowrap"
+              className="px-3 py-1.5 rounded-lg text-sm font-medium text-[#78716C] hover:text-[#1C1917] hover:bg-[#FAF5EE] transition-colors whitespace-nowrap"
             >
               {link.label}
             </Link>

@@ -53,7 +53,7 @@ export default function LoginPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-surface-raised text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            className="w-full px-3.5 py-2.5 rounded-xl border border-[#E7E0D8] bg-[#FAF5EE] text-sm text-[#1C1917] placeholder:text-[#A8A29E] focus:outline-none focus:ring-2 focus:ring-[#B45309]/30 focus:border-[#B45309] transition-colors"
             placeholder="you@example.com"
           />
         </div>
@@ -69,7 +69,7 @@ export default function LoginPage() {
             onChange={(e) => setPassword(e.target.value)}
             required
             minLength={6}
-            className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-surface-raised text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            className="w-full px-3.5 py-2.5 rounded-xl border border-[#E7E0D8] bg-[#FAF5EE] text-sm text-[#1C1917] placeholder:text-[#A8A29E] focus:outline-none focus:ring-2 focus:ring-[#B45309]/30 focus:border-[#B45309] transition-colors"
             placeholder="••••••••"
           />
         </div>
@@ -83,7 +83,7 @@ export default function LoginPage() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full py-2.5 rounded-xl bg-gradient-to-r from-primary-600 to-primary-500 text-white text-sm font-semibold hover:from-primary-700 hover:to-primary-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md shadow-primary-200 cursor-pointer"
+          className="w-full py-2.5 rounded-full bg-[#B45309] text-white text-sm font-semibold hover:bg-[#92400E] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md shadow-[#B45309]/20 cursor-pointer"
         >
           {loading ? "Signing in..." : "Sign In"}
         </button>
@@ -91,7 +91,7 @@ export default function LoginPage() {
 
       <p className="text-sm text-text-secondary text-center mt-6">
         Don&apos;t have an account?{" "}
-        <Link href="/signup" className="text-primary-600 font-semibold hover:text-primary-700">
+        <Link href="/signup" className="text-[#B45309] font-semibold hover:text-[#92400E]">
           Sign up
         </Link>
       </p>

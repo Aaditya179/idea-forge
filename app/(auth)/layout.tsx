@@ -6,27 +6,33 @@ export default function AuthLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-primary-50 via-white to-primary-100 px-4">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-[#FAF5EE] px-4">
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="flex items-center justify-center gap-3 mb-8">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center shadow-lg shadow-primary-200">
-            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+          <div className="w-10 h-10 rounded-full bg-white border-2 border-[#E7E0D8] flex items-center justify-center shadow-sm">
+            <svg className="w-5 h-5 text-[#B45309]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-primary-700 to-primary-500 bg-clip-text text-transparent">
-            CivicPulse
-          </h1>
+          <div className="flex flex-col leading-none">
+            <span className="text-xl font-extrabold tracking-tight">
+              <span className="text-[#1C1917]">CIVIC</span>
+              <span className="text-[#B45309]">PULSE</span>
+            </span>
+            <span className="text-[9px] text-[#A8A29E] font-medium tracking-wide">
+              India&apos;s Civic Intelligence
+            </span>
+          </div>
         </div>
 
         {/* Card */}
-        <div className="bg-white rounded-2xl border border-border shadow-xl shadow-primary-100/20 p-8">
+        <div className="bg-white rounded-2xl border border-[#E7E0D8] shadow-xl shadow-[#B45309]/5 p-8">
           {children}
         </div>
 
-        <p className="text-center text-xs text-text-muted mt-6">
-          AI-Powered Civic Grievance Lodging & Tracking
+        <p className="text-center text-xs text-[#A8A29E] mt-6">
+          AI-Powered Civic Grievance Lodging &amp; Tracking
         </p>
       </div>
     </div>
