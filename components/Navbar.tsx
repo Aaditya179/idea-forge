@@ -16,10 +16,13 @@ const roleLinks: Record<UserRole, { href: string; label: string }[]> = {
     { href: "/citizen/new", label: "New Complaint" },
   ],
   officer: [
-    { href: "/officer", label: "Department Queue" },
+    { href: "/officer", label: "Dashboard" },
+    { href: "/officer/analytics", label: "Analytics" },
   ],
   admin: [
     { href: "/admin", label: "Dashboard" },
+    { href: "/admin/analytics", label: "Analytics" },
+    { href: "/admin/ai-insights", label: "AI Insights" },
     { href: "/admin/complaints", label: "All Complaints" },
   ],
 };

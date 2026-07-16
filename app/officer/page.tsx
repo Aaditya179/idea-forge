@@ -136,7 +136,6 @@ export default function OfficerDashboard() {
           <ComplaintsMapLoader points={mapPoints} />
         </div>
       </div>
-
       {/* Complaints table */}
       {complaints.length === 0 ? (
         <div className="text-center py-20">
