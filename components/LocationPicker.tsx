@@ -201,7 +201,7 @@ export default function LocationPicker({ onLocationSelected }: LocationPickerPro
         </div>
 
         {/* Static map thumbnail */}
-        <div className="h-40 rounded-xl overflow-hidden border border-border pointer-events-none">
+        <div className="relative z-0 isolate h-40 rounded-xl overflow-hidden border border-border pointer-events-none" style={{ isolation: "isolate", zIndex: 0 }}>
           <LocationPickerMap
             center={[confirmed.lat, confirmed.lng]}
             marker={[confirmed.lat, confirmed.lng]}
@@ -231,7 +231,7 @@ export default function LocationPicker({ onLocationSelected }: LocationPickerPro
           </button>
         </div>
 
-        <div className="h-72 rounded-xl overflow-hidden border border-border">
+        <div className="relative z-0 isolate h-72 rounded-xl overflow-hidden border border-border" style={{ isolation: "isolate", zIndex: 0 }}>
           <LocationPickerMap
             center={mapCenter}
             marker={pendingMarker}

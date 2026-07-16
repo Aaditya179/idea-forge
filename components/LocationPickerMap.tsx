@@ -57,8 +57,8 @@ export default function LocationPickerMap({
       dragging={!readOnly}
       zoomControl={!readOnly}
       doubleClickZoom={false}
-      className={`w-full rounded-xl overflow-hidden ${className}`}
-      style={{ cursor: readOnly ? "default" : "crosshair" }}
+      className={`w-full rounded-xl overflow-hidden relative z-0 isolate ${className}`}
+      style={{ cursor: readOnly ? "default" : "crosshair", isolation: "isolate", zIndex: 0 }}
     >
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'

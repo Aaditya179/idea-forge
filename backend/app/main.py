@@ -18,6 +18,7 @@ from fastapi import FastAPI
 from app.api.complaint import router as complaint_router
 from app.api.complaint_test import router as complaint_test_router
 from app.api.duplicate_test import router as duplicate_test_router
+from app.api.routing_test import router as routing_test_router
 
 load_dotenv()
 
@@ -35,3 +36,4 @@ app = FastAPI(
 app.include_router(complaint_test_router)
 app.include_router(complaint_router)
 app.include_router(duplicate_test_router)
+app.include_router(routing_test_router)

@@ -9,6 +9,12 @@ import { createComplaint, uploadComplaintImage } from "@/lib/queries/complaints"
 import { classifyComplaint } from "@/lib/routing/keywordRouter";
 import VoiceInput from "@/components/VoiceInput";
 import LocationPicker, { LocationData } from "@/components/LocationPicker";
+import AgentPipeline, {
+  ClassifyResult,
+  CleanTranscriptResult,
+  DuplicateCheckResult,
+} from "@/components/AgentPipeline";
+import { AnimatePresence } from "framer-motion";
 
 export default function NewComplaintPage() {
   const router = useRouter();
@@ -22,6 +28,14 @@ export default function NewComplaintPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // Pipeline state
+  const [showPipeline, setShowPipeline] = useState(false);
+  const [pipelineData, setPipelineData] = useState<{
+    complaintId: string;
+    classifyResult: ClassifyResult | null;
+    cleanResult: CleanTranscriptResult | null;
+    duplicateResult: DuplicateCheckResult | null;
+  } | null>(null);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -59,8 +73,7 @@ export default function NewComplaintPage() {
         return;
       }
 
-      // 2. Classify the complaint using keyword matching
-      // TODO: replace with LLM classification agent
+      // 2. Classify the complaint using keyword matching (fast local fallback)
       const { category, departmentName } = classifyComplaint(rawText);
 
       // 3. Resolve department ID from department name
@@ -77,7 +90,7 @@ export default function NewComplaintPage() {
         imageUrl = await uploadComplaintImage(supabase, imageFile, profile.id);
       }
 
-      // 5. Insert complaint
+      // 5. Insert complaint into DB
       const complaint = await createComplaint(supabase, {
         user_id: profile.id,
         raw_text: rawText,
@@ -95,82 +108,112 @@ export default function NewComplaintPage() {
         return;
       }
 
-      // 6b. Call server-side Groq classification API (updates department_id + priority in DB).
-      // Keep a record of what the classifier returned so the duplicate check can use it.
-      let classifiedDepartmentId: string = department.id;
-      let classifiedPriority: string | null = null;
+      // 6. Fire ALL AI calls in parallel — fetch results, THEN show the pipeline animation
+      const [classifyRes, cleanRes, dupRes] = await Promise.allSettled([
+        // 6a. Groq classification
+        (async () => {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 8000);
+          const response = await fetch("/api/classify", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ complaintId: complaint.id, rawText }),
+            signal: controller.signal,
+          });
+          clearTimeout(timeoutId);
+          if (!response.ok) throw new Error(`classify: ${response.status}`);
+          return (await response.json()) as ClassifyResult;
+        })(),
 
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 8000);
+        // 6b. Clean transcript
+        (async () => {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 8000);
+          const response = await fetch("/api/clean-transcript", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ rawText }),
+            signal: controller.signal,
+          });
+          clearTimeout(timeoutId);
+          if (!response.ok) throw new Error(`clean: ${response.status}`);
+          return (await response.json()) as CleanTranscriptResult;
+        })(),
 
-        const response = await fetch("/api/classify", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ complaintId: complaint.id, rawText }),
-          signal: controller.signal,
-        });
+        // 6c. Duplicate check (needs classified department_id, but we'll use the keyword-classified one
+        //     for the parallel call; the classify route updates the DB anyway)
+        (async () => {
+          // Small delay to let classify finish first and update department_id in DB
+          await new Promise((r) => setTimeout(r, 2000));
 
-        clearTimeout(timeoutId);
+          // Re-read the complaint to get the AI-classified department_id
+          const { data: freshComplaint } = await supabase
+            .from("complaints")
+            .select("department_id, priority")
+            .eq("id", complaint.id)
+            .single();
 
-        if (response.ok) {
-          const classifyData = await response.json();
-          // Resolve the department_id for the AI-classified category
-          if (classifyData.category) {
-            const aiDept = await getDepartmentByName(supabase, classifyData.category);
-            if (aiDept) classifiedDepartmentId = aiDept.id;
-          }
-          if (classifyData.priority) classifiedPriority = classifyData.priority;
-        }
-      } catch (classifyErr) {
-        console.warn(
-          "[NewComplaint] AI classification failed or timed out. Falling back to keyword classification.",
-          classifyErr
-        );
+          const deptId = freshComplaint?.department_id || department.id;
+          const priority = freshComplaint?.priority || null;
+
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 14000);
+          const response = await fetch("/api/check-duplicates", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              complaintId: complaint.id,
+              rawText,
+              lat: locationData.lat,
+              lng: locationData.lng,
+              departmentId: deptId,
+              priority,
+            }),
+            signal: controller.signal,
+          });
+          clearTimeout(timeoutId);
+          if (!response.ok) throw new Error(`dup: ${response.status}`);
+          return (await response.json()) as DuplicateCheckResult;
+        })(),
+      ]);
+
+      const classifyResult = classifyRes.status === "fulfilled" ? classifyRes.value : null;
+      const cleanResult = cleanRes.status === "fulfilled" ? cleanRes.value : null;
+      const duplicateResult = dupRes.status === "fulfilled" ? dupRes.value : null;
+
+      if (classifyRes.status === "rejected") {
+        console.warn("[NewComplaint] AI classification failed:", classifyRes.reason);
+      }
+      if (cleanRes.status === "rejected") {
+        console.warn("[NewComplaint] Transcript cleanup failed:", cleanRes.reason);
+      }
+      if (dupRes.status === "rejected") {
+        console.warn("[NewComplaint] Duplicate check failed:", dupRes.reason);
       }
 
-      // 6c. Duplicate / proximity + LLM-similarity check — non-blocking, never fails the submission.
-      let similarCount = 0;
-      try {
-        const dupController = new AbortController();
-        // 14 s: up to 8 s for Groq similarity call + buffer for SQL + network
-        const dupTimeout = setTimeout(() => dupController.abort(), 14000);
-
-        const dupRes = await fetch("/api/check-duplicates", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            complaintId: complaint.id,
-            rawText,                        // needed for LLM similarity filter
-            lat: locationData.lat,
-            lng: locationData.lng,
-            departmentId: classifiedDepartmentId,
-            priority: classifiedPriority,
-          }),
-          signal: dupController.signal,
-        });
-
-        clearTimeout(dupTimeout);
-
-        if (dupRes.ok) {
-          const dupData = await dupRes.json();
-          similarCount = dupData.similarCount ?? 0;
-        }
-      } catch (dupErr) {
-        console.warn("[NewComplaint] Duplicate check failed or timed out — submission continues.", dupErr);
-      }
-
-      // 7. Redirect to dashboard, passing similar count for banner display
-      const redirectUrl = similarCount > 0
-        ? `/citizen?similar=${similarCount}`
-        : "/citizen";
-      router.push(redirectUrl);
-      router.refresh();
+      // 7. Show the pipeline animation with the pre-fetched results
+      setLoading(false);
+      setPipelineData({
+        complaintId: complaint.id,
+        classifyResult,
+        cleanResult,
+        duplicateResult,
+      });
+      setShowPipeline(true);
     } catch (err) {
       console.error("Error submitting complaint:", err);
       setError("An unexpected error occurred. Please try again.");
       setLoading(false);
     }
+  };
+
+  const handlePipelineComplete = () => {
+    setShowPipeline(false);
+    const similarCount = pipelineData?.duplicateResult?.similarCount ?? 0;
+    const redirectUrl =
+      similarCount > 0 ? `/citizen?similar=${similarCount}` : "/citizen";
+    router.push(redirectUrl);
+    router.refresh();
   };
 
   return (
@@ -279,7 +322,7 @@ export default function NewComplaintPage() {
               disabled={loading || !rawText.trim() || !locationData}
               className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-primary-600 to-primary-500 text-white text-sm font-semibold hover:from-primary-700 hover:to-primary-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md shadow-primary-200 cursor-pointer"
             >
-              {loading ? "Submitting..." : "Submit Complaint"}
+              {loading ? "Processing…" : "Submit Complaint"}
             </button>
             <button
               type="button"
@@ -291,6 +334,21 @@ export default function NewComplaintPage() {
           </div>
         </form>
       </div>
+
+      {/* Agent Pipeline Overlay */}
+      <AnimatePresence>
+        {showPipeline && pipelineData && (
+          <AgentPipeline
+            rawText={rawText}
+            complaintId={pipelineData.complaintId}
+            classifyResult={pipelineData.classifyResult}
+            cleanResult={pipelineData.cleanResult}
+            duplicateResult={pipelineData.duplicateResult}
+            onComplete={handlePipelineComplete}
+            onClose={handlePipelineComplete}
+          />
+        )}
+      </AnimatePresence>
     </>
   );
 }

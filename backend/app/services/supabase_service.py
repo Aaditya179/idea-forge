@@ -166,6 +166,34 @@ class SupabaseService:
                 f"Failed to fetch nearby complaints: {exc}"
             ) from exc
 
+    async def find_officers_by_department(
+        self, department: str, limit: int = 20
+    ) -> list[dict[str, Any]]:
+        """Fetch officers assigned to a department."""
+        logger.info("Finding officers for department=%s", department)
+        try:
+            return await asyncio.to_thread(
+                queries.find_officers_by_department, self._client, department, limit
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.error("find_officers_by_department failed: %s", exc)
+            raise SupabaseServiceError(
+                f"Failed to fetch department officers: {exc}"
+            ) from exc
+
+    async def find_officers_by_ward(
+        self, ward: str, limit: int = 20
+    ) -> list[dict[str, Any]]:
+        """Fetch officers assigned to a ward."""
+        logger.info("Finding officers for ward=%s", ward)
+        try:
+            return await asyncio.to_thread(
+                queries.find_officers_by_ward, self._client, ward, limit
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.error("find_officers_by_ward failed: %s", exc)
+            raise SupabaseServiceError(f"Failed to fetch ward officers: {exc}") from exc
+
 
 def get_supabase_service() -> SupabaseService:
     """

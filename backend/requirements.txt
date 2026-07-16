@@ -8,7 +8,7 @@ pydantic-settings
 
 supabase
 
-google-generativeai
+google-genai
 
 httpx
 

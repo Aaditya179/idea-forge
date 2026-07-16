@@ -8,7 +8,7 @@ pipeline:
         -> Complaint Agent      -> ComplaintContext
         -> Duplicate Agent      -> ComplaintContext
         -> Priority Agent       -> ComplaintContext   (future)
-        -> Routing Agent        -> ComplaintContext   (future)
+        -> Routing Agent        -> ComplaintContext
         -> Communication Agent  -> ComplaintContext   (future)
 
 Every agent receives a `ComplaintContext` and returns the SAME instance,
@@ -25,6 +25,7 @@ from pydantic import BaseModel, Field
 
 from app.models.complaint import ComplaintAnalysis
 from app.models.duplicate import DuplicateResult
+from app.models.routing import RoutingResult
 
 
 class ComplaintContext(BaseModel):
@@ -69,8 +70,8 @@ class ComplaintContext(BaseModel):
     priority: dict | None = Field(
         default=None, description="Placeholder for the future Priority Agent's output."
     )
-    routing: dict | None = Field(
-        default=None, description="Placeholder for the future Routing Agent's output."
+    routing: RoutingResult | None = Field(
+        default=None, description="Output of the Routing Agent."
     )
     communication: dict | None = Field(
         default=None,
