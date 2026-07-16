@@ -10,6 +10,7 @@ import PriorityBadge from "@/components/PriorityBadge";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import ErrorMessage from "@/components/ErrorMessage";
 import KPIGrid from "@/components/officer/KPIGrid";
+import OfficerChatBot from "@/components/officer/OfficerChatBot";
 import type { Complaint, ComplaintStatus, Profile, Priority } from "@/lib/types";
 
 const STATUS_OPTIONS: { value: ComplaintStatus | "all"; label: string }[] = [
@@ -189,6 +190,24 @@ export default function OfficerDashboard() {
           </div>
         </div>
       )}
+
+      {/* Officer Copilot floating chatbot — receives live queue as context */}
+      <OfficerChatBot
+        queue={complaints.map((c) => ({
+          id: c.id,
+          raw_text: c.raw_text,
+          category: c.category ?? null,
+          status: c.status,
+          priority: c.priority ?? null,
+          location_text: (c as unknown as { location_text?: string }).location_text ?? null,
+          created_at: c.created_at,
+        }))}
+        departmentName={
+          profile
+            ? `${(profile as unknown as { departments?: { name: string } }).departments?.name ?? "Your Department"}`
+            : "Municipal Services"
+        }
+      />
     </>
   );
 }
