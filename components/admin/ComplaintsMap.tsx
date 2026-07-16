@@ -1,7 +1,10 @@
 "use client";
 
-import { MapContainer, TileLayer, CircleMarker, Popup } from "react-leaflet";
+import { useState, useMemo, useEffect } from "react";
+import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from "react-leaflet";
+import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import "leaflet.heat";
 import type { ComplaintMapPoint } from "@/lib/queries/complaints";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -12,11 +15,70 @@ const STATUS_COLORS: Record<string, string> = {
     rejected: "#ef4444",
 };
 
+const PRIORITY_WEIGHT: Record<string, number> = {
+    high: 1.0,
+    medium: 0.6,
+    low: 0.3,
+};
+
+/** Snapchat-style gradient: Blue → Green → Yellow → Orange → Red */
+const HEATMAP_GRADIENT: Record<number, string> = {
+    0.15: "#0044ff",
+    0.30: "#00ccff",
+    0.45: "#00ff66",
+    0.55: "#aaff00",
+    0.65: "#ffff00",
+    0.78: "#ffaa00",
+    0.90: "#ff4400",
+    1.0:  "#ff0000",
+};
+
+type ViewMode = "markers" | "heatmap";
+
+/**
+ * Inner component that renders the canvas heatmap layer on the Leaflet map.
+ * Uses useMap() to access the map instance, manages the layer lifecycle via useEffect.
+ */
+function HeatmapLayer({ data }: { data: [number, number, number][] }) {
+    const map = useMap();
+
+    useEffect(() => {
+        if (data.length === 0) return;
+
+        const heat = L.heatLayer(data, {
+            radius: 40,
+            blur: 30,
+            maxZoom: 14,
+            max: 0.6,
+            minOpacity: 0.55,
+            gradient: HEATMAP_GRADIENT,
+        }).addTo(map);
+
+        return () => {
+            map.removeLayer(heat);
+        };
+    }, [map, data]);
+
+    return null;
+}
+
 export default function ComplaintsMap({ points }: { points: ComplaintMapPoint[] }) {
+    const [viewMode, setViewMode] = useState<ViewMode>("heatmap");
+
+    const heatData = useMemo<[number, number, number][]>(
+        () =>
+            points.map((p) => [
+                p.latitude,
+                p.longitude,
+                PRIORITY_WEIGHT[p.priority ?? ""] ?? 0.5,
+            ]),
+        [points]
+    );
+
     if (points.length === 0) {
         return (
             <div className="h-[400px] flex items-center justify-center text-sm text-text-muted">
-                No geo-tagged complaints yet
+                No map data available.
             </div>
         );
     }
@@ -24,31 +86,63 @@ export default function ComplaintsMap({ points }: { points: ComplaintMapPoint[] 
     const center: [number, number] = [points[0].latitude, points[0].longitude];
 
     return (
-        <MapContainer center={center} zoom={12} style={{ height: "400px", width: "100%" }}>
-            <TileLayer
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                attribution='&copy; OpenStreetMap contributors'
-            />
-            {points.map((p) => (
-                <CircleMarker
-                    key={p.id}
-                    center={[p.latitude, p.longitude]}
-                    radius={8}
-                    pathOptions={{
-                        color: STATUS_COLORS[p.status] || "#9ca3af",
-                        fillColor: STATUS_COLORS[p.status] || "#9ca3af",
-                        fillOpacity: 0.6,
-                    }}
+        <div>
+            {/* Toggle */}
+            <div className="flex items-center gap-1 px-5 py-3 border-b border-border">
+                <button
+                    type="button"
+                    onClick={() => setViewMode("heatmap")}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+                        viewMode === "heatmap"
+                            ? "bg-violet-600 text-white"
+                            : "bg-surface-raised text-text-secondary hover:bg-violet-50 hover:text-violet-700"
+                    }`}
                 >
-                    <Popup>
-                        <div className="text-xs">
-                            <p className="font-semibold">{p.department_name}</p>
-                            <p>{p.category || "Uncategorized"}</p>
-                            <p className="capitalize">{p.status.replace("_", " ")}</p>
-                        </div>
-                    </Popup>
-                </CircleMarker>
-            ))}
-        </MapContainer>
+                    Heatmap
+                </button>
+                <button
+                    type="button"
+                    onClick={() => setViewMode("markers")}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+                        viewMode === "markers"
+                            ? "bg-violet-600 text-white"
+                            : "bg-surface-raised text-text-secondary hover:bg-violet-50 hover:text-violet-700"
+                    }`}
+                >
+                    Markers
+                </button>
+            </div>
+
+            <MapContainer center={center} zoom={12} style={{ height: "400px", width: "100%" }}>
+                <TileLayer
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    attribution='&copy; OpenStreetMap contributors'
+                />
+
+                {viewMode === "markers" &&
+                    points.map((p) => (
+                        <CircleMarker
+                            key={p.id}
+                            center={[p.latitude, p.longitude]}
+                            radius={8}
+                            pathOptions={{
+                                color: STATUS_COLORS[p.status] || "#9ca3af",
+                                fillColor: STATUS_COLORS[p.status] || "#9ca3af",
+                                fillOpacity: 0.6,
+                            }}
+                        >
+                            <Popup>
+                                <div className="text-xs">
+                                    <p className="font-semibold">{p.department_name}</p>
+                                    <p>{p.category || "Uncategorized"}</p>
+                                    <p className="capitalize">{p.status.replace("_", " ")}</p>
+                                </div>
+                            </Popup>
+                        </CircleMarker>
+                    ))}
+
+                {viewMode === "heatmap" && <HeatmapLayer data={heatData} />}
+            </MapContainer>
+        </div>
     );
 }

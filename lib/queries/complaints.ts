@@ -502,6 +502,7 @@ export interface ComplaintMapPoint {
   category: string | null;
   department_name: string;
   status: string;
+  priority?: string | null;
 }
 
 export async function getComplaintsForMap(
@@ -509,7 +510,7 @@ export async function getComplaintsForMap(
 ): Promise<ComplaintMapPoint[]> {
   const { data, error } = await supabase
     .from("complaints")
-    .select("id, latitude, longitude, category, status, departments(name)")
+    .select("id, latitude, longitude, category, status, priority, departments(name)")
     .not("latitude", "is", null)
     .not("longitude", "is", null);
 
@@ -524,6 +525,7 @@ export async function getComplaintsForMap(
     longitude: number;
     category: string | null;
     status: string;
+    priority: string | null;
     departments: { name: string } | null;
   };
 
@@ -534,6 +536,7 @@ export async function getComplaintsForMap(
     category: row.category,
     department_name: row.departments?.name || "Unknown",
     status: row.status,
+    priority: row.priority,
   }));
 }
 
