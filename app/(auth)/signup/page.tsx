@@ -1,12 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { createProfile } from "@/lib/queries/profiles";
-import { getDepartments } from "@/lib/queries/departments";
-import type { Department, UserRole } from "@/lib/types";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -15,33 +13,14 @@ export default function SignupPage() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<UserRole>("citizen");
-  const [departmentId, setDepartmentId] = useState("");
-  const [departments, setDepartments] = useState<Department[]>([]);
+  const role = "citizen";
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-
-  // Fetch departments for the officer dropdown
-  useEffect(() => {
-    const fetchDepartments = async () => {
-      const depts = await getDepartments(supabase);
-      setDepartments(depts);
-    };
-    fetchDepartments();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
-
-    // Validate officer must select department
-    if (role === "officer" && !departmentId) {
-      setError("Please select a department for the officer role.");
-      setLoading(false);
-      return;
-    }
 
     // 1. Create auth user with metadata
     const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -51,7 +30,7 @@ export default function SignupPage() {
         data: {
           full_name: fullName,
           role,
-          department_id: role === "officer" ? departmentId : null,
+          department_id: null,
         },
       },
     });
@@ -75,7 +54,7 @@ export default function SignupPage() {
       id: authData.user.id,
       full_name: fullName,
       role,
-      department_id: role === "officer" ? departmentId : null,
+      department_id: null,
     });
 
     if (!profile) {
@@ -150,47 +129,6 @@ export default function SignupPage() {
           />
         </div>
 
-        <div>
-          <label htmlFor="signup-role" className="block text-sm font-medium text-text-primary mb-1.5">
-            Role
-          </label>
-          <select
-            id="signup-role"
-            value={role}
-            onChange={(e) => setRole(e.target.value as UserRole)}
-            className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-surface-raised text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent cursor-pointer"
-          >
-            <option value="citizen">Citizen</option>
-            <option value="officer">Officer</option>
-            <option value="admin">Admin</option>
-          </select>
-          <p className="text-xs text-text-muted mt-1">
-            Demo mode — in production, roles are assigned by administrators.
-          </p>
-        </div>
-
-        {role === "officer" && (
-          <div>
-            <label htmlFor="signup-department" className="block text-sm font-medium text-text-primary mb-1.5">
-              Department
-            </label>
-            <select
-              id="signup-department"
-              value={departmentId}
-              onChange={(e) => setDepartmentId(e.target.value)}
-              required
-              className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-surface-raised text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent cursor-pointer"
-            >
-              <option value="">Select department...</option>
-              {departments.map((dept) => (
-                <option key={dept.id} value={dept.id}>
-                  {dept.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-
         {error && (
           <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700">
             {error}
@@ -200,7 +138,7 @@ export default function SignupPage() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full py-2.5 rounded-xl bg-gradient-to-r from-primary-600 to-primary-500 text-white text-sm font-semibold hover:from-primary-700 hover:to-primary-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md shadow-primary-200 cursor-pointer"
+          className="w-full py-2.5 rounded-full bg-[#B45309] text-white text-sm font-semibold hover:bg-[#92400E] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md shadow-[#B45309]/20 cursor-pointer"
         >
           {loading ? "Creating account..." : "Create Account"}
         </button>
@@ -208,7 +146,7 @@ export default function SignupPage() {
 
       <p className="text-sm text-text-secondary text-center mt-6">
         Already have an account?{" "}
-        <Link href="/login" className="text-primary-600 font-semibold hover:text-primary-700">
+        <Link href="/login" className="text-[#B45309] font-semibold hover:text-[#92400E]">
           Sign in
         </Link>
       </p>

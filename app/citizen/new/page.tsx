@@ -218,19 +218,19 @@ export default function NewComplaintPage() {
 
   return (
     <>
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-text-primary">Submit a Complaint</h1>
-        <p className="text-sm text-text-secondary mt-1">
-          Describe your issue and we&apos;ll route it to the right department
+      <div className="max-w-3xl mx-auto mb-8">
+        <h1 className="text-3xl sm:text-4xl font-bold text-[#1c1917] tracking-tight">Submit a Complaint</h1>
+        <p className="text-base text-[#4a423a] mt-1.5">
+          Describe your issue and our AI engine will route it to the exact municipal engineer immediately.
         </p>
       </div>
 
-      <div className="max-w-2xl">
+      <div className="max-w-3xl mx-auto bg-white rounded-2xl border border-[#e6dfd3] p-6 sm:p-8 shadow-sm">
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Description */}
           <div>
-            <label htmlFor="complaint-text" className="block text-sm font-semibold text-text-primary mb-2">
-              Describe your issue <span className="text-red-500">*</span>
+            <label htmlFor="complaint-text" className="block text-sm font-bold text-[#1c1917] mb-2 font-mono uppercase tracking-wider">
+              Describe your issue <span className="text-[#9e3333]">*</span>
             </label>
             <textarea
               id="complaint-text"
@@ -238,50 +238,52 @@ export default function NewComplaintPage() {
               onChange={(e) => setRawText(e.target.value)}
               required
               rows={5}
-              className="w-full px-4 py-3 rounded-xl border border-border bg-white text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
-              placeholder="E.g., There is a broken water pipe leaking on Main Street causing road damage and water wastage..."
+              className="w-full px-4 py-3.5 rounded-xl border border-[#e6dfd3] bg-[#faf6f0] text-sm sm:text-base text-[#1c1917] placeholder:text-[#7a6f64] focus:outline-none focus:ring-2 focus:ring-[#c86d28] focus:border-transparent resize-none shadow-sm"
+              placeholder="E.g., Severe road crater leaking water near Sector 14 market causing traffic disruption and safety hazard..."
             />
-            {/* Voice-to-text input — appends to rawText, which classifyComplaint reads unchanged */}
-            <VoiceInput
-              value={rawText}
-              onChange={setRawText}
-              textareaId="complaint-text"
-            />
-            <p className="text-xs text-text-muted mt-2">
-              Be as specific as possible. The system will automatically categorize and route your complaint.
+            {/* Voice-to-text input */}
+            <div className="mt-3">
+              <VoiceInput
+                value={rawText}
+                onChange={setRawText}
+                textareaId="complaint-text"
+              />
+            </div>
+            <p className="text-xs text-[#7a6f64] mt-2 leading-relaxed font-normal">
+              Be as specific as possible. Our NLP engine will automatically categorize urgency and assign the responsible ward engineer.
             </p>
           </div>
 
           {/* Location — required */}
-          <div>
-            <label className="block text-sm font-semibold text-text-primary mb-2">
-              Location <span className="text-red-500">*</span>
+          <div className="pt-4 border-t border-[#e6dfd3]">
+            <label className="block text-sm font-bold text-[#1c1917] mb-2 font-mono uppercase tracking-wider">
+              Location <span className="text-[#9e3333]">*</span>
             </label>
             <LocationPicker onLocationSelected={setLocationData} />
             {locationValidationError && (
-              <p className="text-xs text-red-600 mt-2 font-medium flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-red-600 shrink-0" />
+              <p className="text-xs text-[#9e3333] mt-2 font-semibold flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#9e3333] shrink-0" />
                 {locationValidationError}
               </p>
             )}
           </div>
 
           {/* Image upload */}
-          <div>
-            <label className="block text-sm font-semibold text-text-primary mb-2">
-              Attach Image <span className="text-text-muted font-normal">(optional)</span>
+          <div className="pt-4 border-t border-[#e6dfd3]">
+            <label className="block text-sm font-bold text-[#1c1917] mb-2 font-mono uppercase tracking-wider">
+              Attach Photo Evidence <span className="text-[#7a6f64] font-normal lowercase">(optional)</span>
             </label>
             {imagePreview ? (
-              <div className="relative rounded-xl overflow-hidden border border-border">
+              <div className="relative rounded-xl overflow-hidden border border-[#e6dfd3] shadow-sm">
                 <img
                   src={imagePreview}
                   alt="Complaint attachment preview"
-                  className="w-full h-48 object-cover"
+                  className="w-full h-56 object-cover"
                 />
                 <button
                   type="button"
                   onClick={removeImage}
-                  className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80 transition-colors cursor-pointer"
+                  className="absolute top-3 right-3 w-8 h-8 rounded-full bg-[#1c1917]/80 text-white flex items-center justify-center hover:bg-[#1c1917] transition-colors cursor-pointer shadow"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -291,13 +293,13 @@ export default function NewComplaintPage() {
             ) : (
               <label
                 htmlFor="complaint-image"
-                className="flex flex-col items-center justify-center w-full h-36 rounded-xl border-2 border-dashed border-border hover:border-primary-300 bg-surface-raised hover:bg-primary-50/30 transition-colors cursor-pointer"
+                className="flex flex-col items-center justify-center w-full h-40 rounded-xl border-2 border-dashed border-[#e6dfd3] hover:border-[#c86d28] bg-[#faf6f0] hover:bg-[#fbefe3]/50 transition-all cursor-pointer"
               >
-                <svg className="w-8 h-8 text-text-muted mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-8 h-8 text-[#7a6f64] mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
-                <span className="text-sm text-text-muted">Click to upload an image</span>
-                <span className="text-xs text-text-muted mt-0.5">PNG, JPG, WEBP up to 5MB</span>
+                <span className="text-sm font-semibold text-[#4a423a]">Click to attach verification photo</span>
+                <span className="text-xs text-[#7a6f64] font-mono mt-0.5">PNG, JPG, WEBP up to 5MB</span>
                 <input
                   id="complaint-image"
                   type="file"
@@ -310,26 +312,26 @@ export default function NewComplaintPage() {
           </div>
 
           {error && (
-            <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700">
+            <div className="p-4 rounded-xl bg-[#fde8e8] border border-[#9e3333]/20 text-sm font-semibold text-[#9e3333]">
               {error}
             </div>
           )}
 
           {/* Submit */}
-          <div className="flex items-center gap-3 pt-2">
-            <button
-              type="submit"
-              disabled={loading || !rawText.trim() || !locationData}
-              className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-primary-600 to-primary-500 text-white text-sm font-semibold hover:from-primary-700 hover:to-primary-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md shadow-primary-200 cursor-pointer"
-            >
-              {loading ? "Processing…" : "Submit Complaint"}
-            </button>
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#e6dfd3]">
             <button
               type="button"
               onClick={() => router.back()}
-              className="px-4 py-2.5 rounded-xl border border-border text-sm font-medium text-text-secondary hover:bg-surface-overlay transition-colors cursor-pointer"
+              className="px-6 py-3 rounded-full border border-[#e6dfd3] text-sm font-semibold text-[#4a423a] bg-white hover:bg-[#faf6f0] transition-colors cursor-pointer"
             >
               Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading || !rawText.trim() || !locationData}
+              className="px-8 py-3 rounded-full bg-[#c86d28] text-white text-sm font-semibold hover:bg-[#b35c1e] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm hover:shadow-orange-900/20 active:scale-95 cursor-pointer"
+            >
+              {loading ? "Processing AI Routing…" : "Submit Complaint →"}
             </button>
           </div>
         </form>

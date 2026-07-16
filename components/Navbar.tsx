@@ -9,6 +9,7 @@ import { Scale, Globe, LogOut } from "lucide-react";
 interface NavbarProps {
   role: UserRole;
   fullName: string;
+  departmentName?: string | null;
 }
 
 const roleLinks: Record<UserRole, { href: string; label: string }[]> = {
@@ -28,13 +29,7 @@ const roleLinks: Record<UserRole, { href: string; label: string }[]> = {
   ],
 };
 
-const roleBadgeColors: Record<UserRole, string> = {
-  citizen: "bg-[#FFFBEB] text-[#B45309] border border-[#FDE68A]",
-  officer: "bg-[#F3F0FF] text-violet-700 border border-violet-200",
-  admin: "bg-[#ECFDF5] text-emerald-700 border border-emerald-200",
-};
-
-export default function Navbar({ role, fullName }: NavbarProps) {
+export default function Navbar({ role, fullName, departmentName }: NavbarProps) {
   const router = useRouter();
   const supabase = createClient();
 
@@ -45,26 +40,26 @@ export default function Navbar({ role, fullName }: NavbarProps) {
   };
 
   const links = roleLinks[role] || [];
-  const initials = fullName
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
 
   return (
-    <nav className="sticky top-0 z-50 border-b border-[#E7E0D8] bg-white/95 backdrop-blur-md">
+    <nav className="sticky top-0 z-50 border-b border-[#e6dfd3] bg-[#faf6f0]/95 backdrop-blur-md shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <Link href={`/${role}`} className="flex items-center gap-2.5 shrink-0">
-            <div className="w-8 h-8 rounded-full bg-[#FAF5EE] border border-[#E7E0D8] flex items-center justify-center">
-              <Scale className="w-4 h-4 text-[#B45309]" />
+          {/* Logo - exact emblem and typography from landing page */}
+          <Link href={`/${role}`} className="flex items-center gap-3 group focus:outline-none shrink-0">
+            <img
+              src="/emblem.png"
+              alt="Government of India Emblem"
+              className="h-9 sm:h-10 w-auto object-contain shrink-0 group-hover:scale-105 transition-transform"
+            />
+            <div className="flex flex-col text-left">
+              <span className="text-xl font-bold tracking-tight text-[#1c1917] flex items-center gap-1.5">
+                CivicPulse
+              </span>
+              <span className="text-[10px] text-[#7a6f64] font-medium uppercase tracking-wider block -mt-0.5">
+                India&apos;s Civic Intelligence
+              </span>
             </div>
-            <span className="text-[14px] font-extrabold tracking-tight hidden sm:block">
-              <span className="text-[#1C1917]">CIVIC</span>
-              <span className="text-[#B45309]">PULSE</span>
-            </span>
           </Link>
 
           {/* Nav links */}
@@ -73,7 +68,7 @@ export default function Navbar({ role, fullName }: NavbarProps) {
               <Link
                 key={link.href}
                 href={link.href}
-                className="px-3.5 py-2 rounded-lg text-sm font-medium text-[#78716C] hover:text-[#1C1917] hover:bg-[#FAF5EE] transition-colors"
+                className="px-3.5 py-2 rounded-lg text-sm font-medium text-[#4a423a] hover:text-[#c86d28] hover:bg-white transition-colors tracking-wide"
               >
                 {link.label}
               </Link>
@@ -81,32 +76,23 @@ export default function Navbar({ role, fullName }: NavbarProps) {
           </div>
 
           {/* Right side */}
-          <div className="flex items-center gap-3">
-            {/* Language toggle */}
-            <button className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border border-[#E7E0D8] text-xs font-medium text-[#78716C] hover:border-[#B45309] transition-colors bg-white">
-              <Globe className="w-3.5 h-3.5" />
-              <span>EN</span>
-            </button>
+          <div className="flex items-center gap-4">
+            {(role === "officer" || role === "admin") && (
+              <div className="flex flex-col text-right hidden sm:block">
+                <span className="text-sm font-semibold text-[#1c1917] leading-tight">{fullName}</span>
+                <span className="text-xs text-[#B45309] font-medium block mt-0.5">
+                  {departmentName || (role === "admin" ? "Executive Command" : "Municipal Officer")}
+                </span>
+              </div>
+            )}
 
-            {/* Role badge + name */}
-            <div className="hidden sm:flex items-center gap-2">
-              <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold capitalize ${roleBadgeColors[role]}`}>
-                {role}
-              </span>
-            </div>
-
-            {/* Avatar circle */}
-            <div className="w-8 h-8 rounded-full bg-[#B45309] flex items-center justify-center text-white text-xs font-bold shrink-0">
-              {initials}
-            </div>
-
-            {/* Sign out */}
             <button
               onClick={handleLogout}
-              className="p-2 rounded-lg text-[#78716C] hover:text-[#C2410C] hover:bg-[#FEF2F2] transition-colors cursor-pointer"
+              className="px-4 py-2 rounded-full bg-[#B45309] text-white text-sm font-semibold hover:bg-[#92400E] transition-all shadow-sm flex items-center gap-2 cursor-pointer"
               title="Sign Out"
             >
               <LogOut className="w-4 h-4" />
+              <span>Log Out</span>
             </button>
           </div>
         </div>
@@ -117,7 +103,7 @@ export default function Navbar({ role, fullName }: NavbarProps) {
             <Link
               key={link.href}
               href={link.href}
-              className="px-3 py-1.5 rounded-lg text-sm font-medium text-[#78716C] hover:text-[#1C1917] hover:bg-[#FAF5EE] transition-colors whitespace-nowrap"
+              className="px-3 py-1.5 rounded-lg text-sm font-medium text-[#4a423a] hover:text-[#c86d28] hover:bg-white transition-colors whitespace-nowrap"
             >
               {link.label}
             </Link>

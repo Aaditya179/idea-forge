@@ -204,22 +204,22 @@ export default async function AdminComplaintDetailPage({ params }: PageProps) {
     ];
 
     return (
-        <div className="min-h-screen bg-slate-50 p-8 text-slate-900">
+        <div className="min-h-screen bg-background py-4 text-text-primary">
             <div className="max-w-7xl mx-auto">
 
                 {/* Breadcrumb */}
                 <div className="mb-6">
-                    <Link href="/admin/complaints" className="text-sm font-medium text-indigo-600 hover:text-indigo-800 transition">
+                    <Link href="/admin/complaints" className="text-sm font-medium text-[#c86d28] hover:underline transition">
                         ← Back to All Complaints
                     </Link>
                 </div>
 
                 {/* Top Header */}
-                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-8 flex justify-between items-start gap-4">
+                <div className="bg-white rounded-2xl shadow-sm border border-[#e6dfd3] p-6 mb-8 flex flex-col sm:flex-row justify-between items-start gap-4">
                     <div>
-                        <h1 className="text-2xl font-bold tracking-tight text-slate-900">Executive Investigation Hub</h1>
-                        <p className="text-slate-500 text-sm mt-1">
-                            Complaint ID: <span className="font-mono bg-slate-100 px-1.5 py-0.5 rounded text-xs text-slate-700">{id}</span>
+                        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-[#1c1917]">Executive Investigation Hub</h1>
+                        <p className="text-[#4a423a] text-sm mt-1.5">
+                            Complaint ID: <span className="font-mono bg-[#faf6f0] border border-[#e6dfd3] px-2 py-0.5 rounded text-xs text-[#1c1917]">{id}</span>
                         </p>
                     </div>
                     <div className="flex flex-col items-end gap-2 shrink-0">
@@ -251,8 +251,8 @@ export default async function AdminComplaintDetailPage({ params }: PageProps) {
                     <div className="lg:col-span-2 space-y-8">
 
                         {/* Citizen Grievance */}
-                        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                            <h2 className="text-lg font-semibold border-b border-slate-100 pb-3 mb-4">Citizen Grievance Submission</h2>
+                        <div className="bg-white rounded-2xl shadow-sm border border-[#e6dfd3] p-6">
+                            <h2 className="text-xl font-bold tracking-tight text-[#1c1917] border-b border-[#e6dfd3] pb-3 mb-4">Citizen Grievance Submission</h2>
                             <div className="space-y-4">
                                 <div>
                                     <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Description</label>
@@ -274,9 +274,9 @@ export default async function AdminComplaintDetailPage({ params }: PageProps) {
                         </div>
 
                         {/* AI Orchestrator Execution Trace */}
-                        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                            <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-1">
-                                <h2 className="text-lg font-semibold text-indigo-950 flex items-center gap-2">
+                        <div className="bg-white rounded-2xl shadow-sm border border-[#e6dfd3] p-6">
+                            <div className="flex items-center justify-between border-b border-[#e6dfd3] pb-3 mb-2">
+                                <h2 className="text-xl font-bold tracking-tight text-[#1c1917] flex items-center gap-2">
                                     🤖 AI Orchestrator Execution Trace
                                 </h2>
                                 {autoAssignedOfficer && (
@@ -306,8 +306,8 @@ export default async function AdminComplaintDetailPage({ params }: PageProps) {
                         </div>
 
                         {/* Live Status Timeline */}
-                        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                            <h2 className="text-lg font-semibold border-b border-slate-100 pb-3 mb-4 flex items-center gap-2">
+                        <div className="bg-white rounded-2xl shadow-sm border border-[#e6dfd3] p-6">
+                            <h2 className="text-xl font-bold tracking-tight text-[#1c1917] border-b border-[#e6dfd3] pb-3 mb-4 flex items-center gap-2">
                                 📋 Live Complaint Status
                             </h2>
                             {updates.length === 0 ? (
@@ -351,8 +351,8 @@ export default async function AdminComplaintDetailPage({ params }: PageProps) {
                     <div className="space-y-6">
 
                         {/* Case Details */}
-                        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                            <h2 className="text-base font-semibold border-b border-slate-100 pb-3 mb-4">Case Details</h2>
+                        <div className="bg-white rounded-2xl shadow-sm border border-[#e6dfd3] p-6">
+                            <h2 className="text-xl font-bold tracking-tight text-[#1c1917] border-b border-[#e6dfd3] pb-3 mb-4">Case Details</h2>
 
                             {/* Officer highlight — top of sidebar */}
                             <div className={`mb-4 p-3 rounded-lg border ${officerName ? 'bg-indigo-50 border-indigo-100' : 'bg-slate-50 border-slate-200'}`}>
@@ -407,8 +407,8 @@ export default async function AdminComplaintDetailPage({ params }: PageProps) {
                         </div>
 
                         {/* Preventive Impact */}
-                        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                            <h2 className="text-base font-semibold border-b border-slate-100 pb-3 mb-4">Preventive Impact Analysis</h2>
+                        <div className="bg-white rounded-2xl shadow-sm border border-[#e6dfd3] p-6">
+                            <h2 className="text-xl font-bold tracking-tight text-[#1c1917] border-b border-[#e6dfd3] pb-3 mb-4">Preventive Impact Analysis</h2>
                             <div className="space-y-4">
                                 <div className="p-4 bg-indigo-50/50 border border-indigo-100 rounded-xl">
                                     <div className="text-2xl font-bold text-indigo-900">{clusterCount} {clusterCount === 1 ? 'Case' : 'Cases'}</div>

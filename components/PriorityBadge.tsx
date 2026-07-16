@@ -8,21 +8,21 @@ const priorityConfig: Record<
 > = {
   high: {
     label: "High",
-    bg: "bg-red-50 border-red-200",
-    text: "text-red-700",
-    dot: "bg-red-500",
+    bg: "bg-[#fde8e8] border-[#9e3333]/20",
+    text: "text-[#9e3333]",
+    dot: "bg-[#9e3333]",
   },
   medium: {
     label: "Medium",
-    bg: "bg-amber-50 border-amber-200",
-    text: "text-amber-700",
-    dot: "bg-amber-500",
+    bg: "bg-[#fbefe3] border-[#f6ddc4]",
+    text: "text-[#c86d28]",
+    dot: "bg-[#c86d28]",
   },
   low: {
     label: "Low",
-    bg: "bg-emerald-50 border-emerald-200",
-    text: "text-emerald-700",
-    dot: "bg-emerald-500",
+    bg: "bg-[#e6f4ea] border-[#1e6f43]/20",
+    text: "text-[#1e6f43]",
+    dot: "bg-[#1e6f43]",
   },
 };
 
@@ -34,8 +34,8 @@ interface PriorityBadgeProps {
 export default function PriorityBadge({ priority, className = "" }: PriorityBadgeProps) {
   if (!priority) {
     return (
-      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border bg-gray-50 border-gray-200 text-gray-500 ${className}`}>
-        <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />
+      <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider border bg-white border-[#e6dfd3] text-[#7a6f64] ${className}`}>
+        <span className="w-1.5 h-1.5 rounded-full bg-[#7a6f64]" />
         —
       </span>
     );
@@ -45,7 +45,7 @@ export default function PriorityBadge({ priority, className = "" }: PriorityBadg
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${config.bg} ${config.text} ${className}`}
+      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider border ${config.bg} ${config.text} ${className}`}
     >
       <span className={`w-1.5 h-1.5 rounded-full ${config.dot}`} />
       {config.label}

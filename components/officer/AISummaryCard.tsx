@@ -42,7 +42,7 @@ export default function AISummaryCard({
 
   if (loading) {
     return (
-      <div className={`bg-white rounded-xl border border-border p-6 ${className}`}>
+      <div className={`bg-white rounded-2xl border border-[#e6dfd3] p-6 shadow-sm ${className}`}>
         <div className="flex items-start gap-3">
           <div className="w-10 h-10 rounded-xl bg-violet-50 flex items-center justify-center flex-shrink-0">
             <svg className="w-5 h-5 text-violet-500 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -63,7 +63,7 @@ export default function AISummaryCard({
 
   if (error) {
     return (
-      <div className={`bg-white rounded-xl border border-border p-6 ${className}`}>
+      <div className={`bg-white rounded-2xl border border-[#e6dfd3] p-6 shadow-sm ${className}`}>
         <div className="flex items-start gap-3">
           <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center flex-shrink-0">
             <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -88,7 +88,7 @@ export default function AISummaryCard({
   }
 
   return (
-    <div className={`bg-white rounded-xl border border-border p-6 ${className}`}>
+    <div className={`bg-white rounded-2xl border border-[#e6dfd3] p-6 shadow-sm ${className}`}>
       <div className="flex items-start gap-3">
         <div className="w-10 h-10 rounded-xl bg-violet-50 flex items-center justify-center flex-shrink-0">
           <svg className="w-5 h-5 text-violet-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">

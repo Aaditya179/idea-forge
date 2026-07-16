@@ -21,6 +21,7 @@ import SuggestedActionCard from "@/components/officer/SuggestedActionCard";
 import ComplaintsMapLoader from "@/components/admin/ComplaintsMapLoader";
 import type { ComplaintMapPoint } from "@/lib/queries/complaints";
 import type { Complaint, ComplaintUpdate as ComplaintUpdateType, ComplaintStatus } from "@/lib/types";
+import { ArrowLeft, MapPin, Tag, Building2, Calendar, Image as ImageIcon } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface AuditResult {
@@ -114,23 +115,23 @@ function ResolutionAuditorPanel({
   };
 
   return (
-    <div className="bg-white rounded-xl border border-border p-6 space-y-5">
+    <div className="bg-white rounded-2xl border border-[#e6dfd3] p-6 sm:p-8 shadow-sm space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between pb-4 border-b border-[#e6dfd3]">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center">
-            <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <div className="w-10 h-10 rounded-xl bg-[#fbefe3] border border-[#f6ddc4] flex items-center justify-center text-[#c86d28]">
+            <svg className="w-5 h-5 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
             </svg>
           </div>
           <div>
-            <h2 className="text-base font-bold text-text-primary">AI Resolution Auditor</h2>
-            <p className="text-xs text-text-muted">Upload proof of completed work to close this ticket</p>
+            <h2 className="text-xl font-bold tracking-tight text-[#1c1917]">AI Resolution Auditor</h2>
+            <p className="text-xs text-[#7a6f64]">Upload field photo evidence to verify and close ticket</p>
           </div>
         </div>
         <button
           onClick={onCancel}
-          className="text-xs text-text-muted hover:text-red-600 transition-colors px-2 py-1 rounded hover:bg-red-50 cursor-pointer"
+          className="text-xs font-semibold text-[#7a6f64] hover:text-[#9e3333] transition-colors px-3 py-1.5 rounded-full hover:bg-[#fde8e8] cursor-pointer border border-transparent hover:border-[#9e3333]/20"
         >
           ✕ Cancel
         </button>
@@ -491,67 +492,93 @@ export default function OfficerComplaintDetailPage() {
       {/* Back link */}
       <Link
         href="/officer"
-        className="inline-flex items-center gap-1.5 text-sm text-text-secondary hover:text-primary-600 mb-6 transition-colors"
+        className="inline-flex items-center gap-2 text-sm font-semibold text-[#4a423a] hover:text-[#c86d28] mb-8 transition-colors"
       >
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-        </svg>
-        Back to Department Queue
+        <ArrowLeft className="w-4 h-4 stroke-[2.5]" />
+        <span>Back to Department Queue</span>
       </Link>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* ── Main column ─────────────────────────────────────────────────── */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-8">
           {/* Complaint details */}
-          <div className="bg-white rounded-xl border border-border p-6">
-            <div className="flex items-start justify-between gap-4 mb-4">
-              <h1 className="text-xl font-bold text-text-primary">Complaint Details</h1>
+          <div className="bg-white rounded-2xl border border-[#e6dfd3] p-6 sm:p-8 shadow-sm">
+            <div className="flex items-start justify-between gap-4 pb-6 border-b border-[#e6dfd3] mb-6">
+              <div>
+                <span className="text-xs font-mono text-[#7a6f64] uppercase tracking-wider block mb-1">
+                  Grievance Record
+                </span>
+                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#1c1917]">Complaint Details</h1>
+              </div>
               <StatusBadge status={complaint.status as ComplaintStatus} />
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-6">
               <div>
-                <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-1.5">Description</h3>
-                <p className="text-sm text-text-primary leading-relaxed whitespace-pre-wrap">{complaint.raw_text}</p>
+                <h3 className="text-xs font-mono font-bold text-[#7a6f64] uppercase tracking-wider mb-2">Description</h3>
+                <p className="text-base text-[#1c1917] leading-relaxed whitespace-pre-wrap">{complaint.raw_text}</p>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-1">Citizen</h3>
-                  <p className="text-sm font-medium text-text-primary">
-                    {(complaint.profiles as unknown as { full_name: string })?.full_name || "—"}
-                  </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-6 border-t border-[#e6dfd3]">
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-[#fbefe3] border border-[#f6ddc4] flex items-center justify-center text-[#c86d28] shrink-0 mt-0.5">
+                    <Building2 className="w-4 h-4 stroke-[2]" />
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-mono font-bold text-[#7a6f64] uppercase tracking-wider mb-1">Citizen</h3>
+                    <p className="text-sm font-semibold text-[#1c1917]">
+                      {(complaint.profiles as unknown as { full_name: string })?.full_name || "—"}
+                    </p>
+                  </div>
                 </div>
                 {complaint.category && (
-                  <div>
-                    <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-1">Category</h3>
-                    <p className="text-sm font-medium text-text-primary">{complaint.category}</p>
+                  <div className="flex items-start gap-3">
+                    <div className="w-9 h-9 rounded-lg bg-[#fbefe3] border border-[#f6ddc4] flex items-center justify-center text-[#c86d28] shrink-0 mt-0.5">
+                      <Tag className="w-4 h-4 stroke-[2]" />
+                    </div>
+                    <div>
+                      <h3 className="text-xs font-mono font-bold text-[#7a6f64] uppercase tracking-wider mb-1">Category</h3>
+                      <p className="text-sm font-semibold text-[#1c1917]">{complaint.category}</p>
+                    </div>
                   </div>
                 )}
                 {complaint.location_text && (
-                  <div>
-                    <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-1">Location</h3>
-                    <p className="text-sm font-medium text-text-primary">{complaint.location_text}</p>
+                  <div className="flex items-start gap-3">
+                    <div className="w-9 h-9 rounded-lg bg-[#fbefe3] border border-[#f6ddc4] flex items-center justify-center text-[#c86d28] shrink-0 mt-0.5">
+                      <MapPin className="w-4 h-4 stroke-[2]" />
+                    </div>
+                    <div>
+                      <h3 className="text-xs font-mono font-bold text-[#7a6f64] uppercase tracking-wider mb-1">Location</h3>
+                      <p className="text-sm font-semibold text-[#1c1917]">{complaint.location_text}</p>
+                    </div>
                   </div>
                 )}
-                <div>
-                  <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-1">Submitted</h3>
-                  <p className="text-sm font-medium text-text-primary">
-                    {new Date(complaint.created_at).toLocaleDateString("en-IN", {
-                      day: "numeric", month: "long", year: "numeric",
-                      hour: "2-digit", minute: "2-digit",
-                    })}
-                  </p>
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-[#fbefe3] border border-[#f6ddc4] flex items-center justify-center text-[#c86d28] shrink-0 mt-0.5">
+                    <Calendar className="w-4 h-4 stroke-[2]" />
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-mono font-bold text-[#7a6f64] uppercase tracking-wider mb-1">Submitted Timestamp</h3>
+                    <p className="text-sm font-semibold text-[#1c1917]">
+                      {new Date(complaint.created_at).toLocaleDateString("en-IN", {
+                        day: "numeric", month: "long", year: "numeric",
+                        hour: "2-digit", minute: "2-digit",
+                      })}
+                    </p>
+                  </div>
                 </div>
               </div>
 
               {complaint.image_url && (
-                <div>
-                  <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">Attached Image</h3>
+                <div className="pt-6 border-t border-[#e6dfd3]">
+                  <div className="flex items-center gap-2 mb-3">
+                    <ImageIcon className="w-4 h-4 text-[#c86d28]" />
+                    <h3 className="text-xs font-mono font-bold text-[#7a6f64] uppercase tracking-wider">Attached Image Evidence</h3>
+                  </div>
                   <img
                     src={complaint.image_url}
                     alt="Complaint attachment"
-                    className="rounded-lg border border-border max-h-64 object-cover"
+                    className="rounded-xl border border-[#e6dfd3] max-h-80 object-cover shadow-sm"
                   />
                 </div>
               )}
@@ -559,10 +586,10 @@ export default function OfficerComplaintDetailPage() {
           </div>
 
           {/* Location map */}
-          <div className="bg-white rounded-xl border border-border p-6">
-            <h2 className="text-lg font-bold text-text-primary mb-4">Location</h2>
+          <div className="bg-white rounded-2xl border border-[#e6dfd3] p-6 sm:p-8 shadow-sm">
+            <h2 className="text-2xl font-bold tracking-tight text-[#1c1917] pb-4 border-b border-[#e6dfd3] mb-6">Geographic Coordinates</h2>
             {complaint.latitude != null && complaint.longitude != null ? (
-              <div className="rounded-lg overflow-hidden border border-border">
+              <div className="rounded-xl overflow-hidden border border-[#e6dfd3] shadow-sm">
                 <ComplaintsMapLoader
                   points={[
                     {
@@ -577,8 +604,8 @@ export default function OfficerComplaintDetailPage() {
                 />
               </div>
             ) : (
-              <div className="h-[200px] flex items-center justify-center rounded-lg border border-dashed border-border bg-surface-raised">
-                <p className="text-sm text-text-muted">Location unavailable</p>
+              <div className="h-[200px] flex items-center justify-center rounded-xl border border-dashed border-[#e6dfd3] bg-[#faf6f0]">
+                <p className="text-sm text-[#7a6f64] font-mono">Location coordinates unavailable</p>
               </div>
             )}
           </div>
@@ -607,18 +634,18 @@ export default function OfficerComplaintDetailPage() {
 
           {/* Status update form (hidden while auditor is active) */}
           {resolveStep === "hidden" && (
-            <div className="bg-white rounded-xl border border-border p-6">
-              <h2 className="text-lg font-bold text-text-primary mb-4">Update Status</h2>
-              <form onSubmit={handleStatusUpdate} className="space-y-4">
+            <div className="bg-white rounded-2xl border border-[#e6dfd3] p-6 sm:p-8 shadow-sm">
+              <h2 className="text-2xl font-bold tracking-tight text-[#1c1917] pb-4 border-b border-[#e6dfd3] mb-6">Update Status & Actions</h2>
+              <form onSubmit={handleStatusUpdate} className="space-y-6">
                 <div>
-                  <label htmlFor="officer-new-status" className="block text-sm font-medium text-text-primary mb-1.5">
+                  <label htmlFor="officer-new-status" className="block text-sm font-bold text-[#1c1917] font-mono uppercase tracking-wider mb-2">
                     New Status
                   </label>
                   <select
                     id="officer-new-status"
                     value={newStatus}
                     onChange={(e) => setNewStatus(e.target.value as ComplaintStatus)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-surface-raised text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent cursor-pointer"
+                    className="w-full px-4 py-3 rounded-xl border border-[#e6dfd3] bg-[#faf6f0] text-sm font-semibold text-[#1c1917] focus:outline-none focus:ring-2 focus:ring-[#c86d28] focus:border-transparent cursor-pointer shadow-sm"
                   >
                     {STATUS_OPTIONS.map((s) => (
                       <option key={s} value={s}>
@@ -627,18 +654,16 @@ export default function OfficerComplaintDetailPage() {
                     ))}
                   </select>
                   {newStatus === "resolved" && (
-                    <p className="text-xs text-violet-600 mt-1.5 flex items-center gap-1">
-                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
-                      </svg>
-                      AI Resolution Audit required — you'll upload an after photo
+                    <p className="text-xs text-[#c86d28] font-semibold mt-2 flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#c86d28] shrink-0" />
+                      AI Resolution Audit required — you&apos;ll upload field verification photo next
                     </p>
                   )}
                 </div>
 
                 <div>
-                  <label htmlFor="officer-update-note" className="block text-sm font-medium text-text-primary mb-1.5">
-                    Note
+                  <label htmlFor="officer-update-note" className="block text-sm font-bold text-[#1c1917] font-mono uppercase tracking-wider mb-2">
+                    Official Note
                   </label>
                   <textarea
                     id="officer-update-note"
@@ -646,21 +671,21 @@ export default function OfficerComplaintDetailPage() {
                     onChange={(e) => setUpdateNote(e.target.value)}
                     required={newStatus !== "resolved"}
                     rows={3}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-surface-raised text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
-                    placeholder={newStatus === "resolved" ? "Optional note (resolution proof is required separately)..." : "Add a note about this status change..."}
+                    className="w-full px-4 py-3.5 rounded-xl border border-[#e6dfd3] bg-[#faf6f0] text-sm text-[#1c1917] placeholder:text-[#7a6f64] focus:outline-none focus:ring-2 focus:ring-[#c86d28] focus:border-transparent resize-none shadow-sm"
+                    placeholder={newStatus === "resolved" ? "Optional note (resolution proof is required separately)..." : "Add an official note about this status transition..."}
                   />
                 </div>
 
                 <button
                   type="submit"
-                  disabled={updating || (newStatus !== "resolved" && !updateNote.trim())}
-                  className={`px-5 py-2.5 rounded-xl text-white text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer ${newStatus === "resolved" ? "bg-emerald-600 hover:bg-emerald-700" : "bg-violet-600 hover:bg-violet-700"}`}
+                  disabled={updating}
+                  className="w-full py-3 rounded-full bg-[#c86d28] text-white text-sm font-semibold hover:bg-[#b35c1e] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm hover:shadow-orange-900/20 active:scale-95 cursor-pointer"
                 >
                   {updating
-                    ? "Updating..."
+                    ? "Updating Status..."
                     : newStatus === "resolved"
-                    ? "🔍 Begin AI Resolution Audit"
-                    : "Update Status"}
+                    ? "🔍 Begin AI Resolution Audit →"
+                    : "Update Status →"}
                 </button>
               </form>
             </div>
@@ -668,17 +693,14 @@ export default function OfficerComplaintDetailPage() {
         </div>
 
         {/* ── Sidebar ───────────────────────────────────────────────────────── */}
-        <div className="lg:col-span-1 space-y-6">
+        <div className="lg:col-span-1 space-y-8">
           {/* Related Complaints */}
           {clusterComplaints.length > 0 && (
-            <div className="bg-white rounded-xl border border-border p-6">
-              <h2 className="text-lg font-bold text-text-primary mb-4 flex items-center gap-2">
-                <svg className="w-5 h-5 text-violet-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-                Related Complaints
-                <span className="ml-auto text-xs font-semibold text-violet-700 bg-violet-50 border border-violet-200 px-2 py-0.5 rounded-full">
-                  🔗 {clusterComplaints.length} in cluster
+            <div className="bg-white rounded-2xl border border-[#e6dfd3] p-6 sm:p-8 shadow-sm">
+              <h2 className="text-2xl font-bold tracking-tight text-[#1c1917] pb-4 border-b border-[#e6dfd3] mb-5 flex items-center justify-between">
+                <span>Related Cluster</span>
+                <span className="text-[11px] font-mono font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-[#e8f1f8] text-[#2f5a82] border border-[#b8d4ea]">
+                  🔗 {clusterComplaints.length} linked
                 </span>
               </h2>
               <div className="space-y-3">
@@ -686,21 +708,21 @@ export default function OfficerComplaintDetailPage() {
                   <a
                     key={c.id}
                     href={`/officer/${c.id}`}
-                    className="block p-3 rounded-lg border border-border hover:border-violet-300 hover:bg-violet-50/40 transition-all group"
+                    className="block p-4 rounded-xl border border-[#e6dfd3] hover:border-[#c86d28] hover:bg-[#faf6f0] transition-all group"
                   >
-                    <p className="text-xs text-text-primary font-medium line-clamp-2 group-hover:text-violet-700 transition-colors">
+                    <p className="text-sm text-[#1c1917] font-semibold line-clamp-2 group-hover:text-[#c86d28] transition-colors">
                       {c.raw_text}
                     </p>
-                    <div className="flex items-center gap-2 mt-2 flex-wrap">
+                    <div className="flex items-center gap-2 mt-2.5 flex-wrap">
                       {c.priority && (
-                        <span className={`text-[11px] font-semibold px-1.5 py-0.5 rounded ${c.priority === "high" ? "bg-red-100 text-red-700" : c.priority === "medium" ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-600"}`}>
+                        <span className={`text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${c.priority === "high" ? "bg-[#fde8e8] text-[#9e3333]" : c.priority === "medium" ? "bg-[#fbefe3] text-[#c86d28]" : "bg-[#faf6f0] text-[#7a6f64]"}`}>
                           {c.priority}
                         </span>
                       )}
                       {!c.is_duplicate && (
-                        <span className="text-[11px] font-semibold px-1.5 py-0.5 rounded bg-violet-100 text-violet-700">primary</span>
+                        <span className="text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-[#e8f1f8] text-[#2f5a82]">primary</span>
                       )}
-                      <span className="text-[11px] text-text-muted">
+                      <span className="text-xs font-mono text-[#7a6f64]">
                         {new Date(c.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
                       </span>
                     </div>
@@ -729,31 +751,31 @@ export default function OfficerComplaintDetailPage() {
           />
 
           {/* Timeline */}
-          <div className="bg-white rounded-xl border border-border p-6">
-            <h2 className="text-lg font-bold text-text-primary mb-4">Timeline</h2>
+          <div className="bg-white rounded-2xl border border-[#e6dfd3] p-6 sm:p-8 shadow-sm">
+            <h2 className="text-2xl font-bold tracking-tight text-[#1c1917] pb-4 border-b border-[#e6dfd3] mb-6">Audit Timeline</h2>
             {updates.length === 0 ? (
-              <p className="text-sm text-text-muted">No updates yet.</p>
+              <p className="text-sm text-[#7a6f64] font-mono">No updates yet.</p>
             ) : (
-              <div className="space-y-0">
+              <div className="space-y-0 relative">
                 {updates.map((update, idx) => (
-                  <div key={update.id} className="relative flex gap-3 min-w-0">
+                  <div key={update.id} className="relative flex gap-4 min-w-0">
                     {idx < updates.length - 1 && (
-                      <div className="absolute left-[7px] top-5 bottom-0 w-px bg-border" />
+                      <div className="absolute left-[9px] top-6 bottom-0 w-0.5 bg-[#e6dfd3]" />
                     )}
-                    <div className="relative z-10 mt-1.5 w-[15px] flex-shrink-0 flex items-start justify-center">
-                      <div className="w-2.5 h-2.5 rounded-full bg-violet-500 ring-2 ring-violet-100" />
+                    <div className="relative z-10 mt-1.5 w-5 flex-shrink-0 flex items-start justify-center">
+                      <div className="w-4 h-4 rounded-full bg-[#c86d28] ring-4 ring-[#fbefe3]" />
                     </div>
-                    <div className="pb-6 flex-1 min-w-0">
-                      <p className="text-sm font-medium text-text-primary break-words">{cleanNote(update.note)}</p>
-                      <div className="flex items-center gap-2 mt-1">
+                    <div className="pb-8 flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-[#1c1917] leading-relaxed break-words">{cleanNote(update.note)}</p>
+                      <div className="flex items-center gap-2 mt-2.5">
                         <StatusBadge status={update.status_at_time as ComplaintStatus} />
                       </div>
                       {update.profiles && (
-                        <p className="text-xs text-text-muted mt-1">
+                        <p className="text-xs font-semibold text-[#4a423a] mt-2">
                           by {(update.profiles as unknown as { full_name: string })?.full_name}
                         </p>
                       )}
-                      <p className="text-xs text-text-muted mt-0.5">
+                      <p className="text-xs font-mono text-[#7a6f64] mt-1">
                         {new Date(update.created_at).toLocaleDateString("en-IN", {
                           day: "numeric", month: "short", year: "numeric",
                           hour: "2-digit", minute: "2-digit",

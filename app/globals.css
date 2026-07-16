@@ -30,26 +30,26 @@
 
   /* Surfaces */
   --color-surface:         #FFFFFF;
-  --color-surface-raised:  #FAF5EE;
+  --color-surface-raised:  #FAF6F0;
   --color-surface-overlay: #F5EFE6;
-  --color-border:          #E7E0D8;
-  --color-border-strong:   #D4C8BB;
+  --color-border:          #E6DFD3;
+  --color-border-strong:   #D1C7B7;
 
   /* Text */
   --color-text-primary:   #1C1917;
-  --color-text-secondary: #78716C;
-  --color-text-muted:     #A8A29E;
+  --color-text-secondary: #4A423A;
+  --color-text-muted:     #7A6F64;
 
   /* Status colors */
-  --color-status-submitted: #3b82f6;
-  --color-status-in-review: #f59e0b;
-  --color-status-assigned:  #8b5cf6;
-  --color-status-resolved:  #10b981;
-  --color-status-rejected:  #ef4444;
+  --color-status-submitted: #2f5a82;
+  --color-status-in-review: #c86d28;
+  --color-status-assigned:  #5b4a8e;
+  --color-status-resolved:  #1e6f43;
+  --color-status-rejected:  #9e3333;
 }
 
 :root {
-  --background: #FAF5EE;
+  --background: #FAF6F0;
   --foreground: #1C1917;
 }
 

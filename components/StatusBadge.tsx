@@ -8,33 +8,33 @@ const statusConfig: Record<
 > = {
   submitted: {
     label: "Submitted",
-    bg: "bg-blue-50 border-blue-200",
-    text: "text-blue-700",
-    dot: "bg-blue-500",
+    bg: "bg-[#e8f1f8] border-[#b8d4ea]",
+    text: "text-[#2f5a82]",
+    dot: "bg-[#2f5a82]",
   },
   in_review: {
     label: "In Review",
-    bg: "bg-amber-50 border-amber-200",
-    text: "text-amber-700",
-    dot: "bg-amber-500",
+    bg: "bg-[#fbefe3] border-[#f6ddc4]",
+    text: "text-[#c86d28]",
+    dot: "bg-[#c86d28]",
   },
   assigned: {
     label: "Assigned",
-    bg: "bg-violet-50 border-violet-200",
-    text: "text-violet-700",
-    dot: "bg-violet-500",
+    bg: "bg-[#f3e8ff] border-[#ddd6fe]",
+    text: "text-[#5b4a8e]",
+    dot: "bg-[#5b4a8e]",
   },
   resolved: {
     label: "Resolved",
-    bg: "bg-emerald-50 border-emerald-200",
-    text: "text-emerald-700",
-    dot: "bg-emerald-500",
+    bg: "bg-[#e6f4ea] border-[#1e6f43]/20",
+    text: "text-[#1e6f43]",
+    dot: "bg-[#1e6f43]",
   },
   rejected: {
     label: "Rejected",
-    bg: "bg-red-50 border-red-200",
-    text: "text-red-700",
-    dot: "bg-red-500",
+    bg: "bg-[#fde8e8] border-[#9e3333]/20",
+    text: "text-[#9e3333]",
+    dot: "bg-[#9e3333]",
   },
 };
 
@@ -48,7 +48,7 @@ export default function StatusBadge({ status, className = "" }: StatusBadgeProps
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${config.bg} ${config.text} ${className}`}
+      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider border ${config.bg} ${config.text} ${className}`}
     >
       <span className={`w-1.5 h-1.5 rounded-full ${config.dot}`} />
       {config.label}

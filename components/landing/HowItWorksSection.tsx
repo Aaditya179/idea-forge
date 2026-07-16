@@ -2,6 +2,7 @@
 
 import React from "react";
 import { motion } from "framer-motion";
+import { DM_Serif_Display } from "next/font/google";
 import {
   MapPin,
   Cpu,
@@ -10,6 +11,11 @@ import {
   ArrowRight,
   GitCommit,
 } from "lucide-react";
+
+const dmSerif = DM_Serif_Display({
+  subsets: ["latin"],
+  weight: "400",
+});
 
 const steps = [
   {
@@ -42,9 +48,10 @@ export default function HowItWorksSection() {
   return (
     <section
       id="how-it-works"
-      className="bg-[#FAF5EE] text-[#1C1917] py-28 lg:py-36 overflow-hidden"
+      className="bg-white text-[#1c1917] py-28 lg:py-36 overflow-hidden"
     >
       <div className="max-w-7xl mx-auto px-6 lg:px-12">
+        
         {/* Section Header */}
         <motion.div
           initial={{ opacity: 0, y: 25 }}
@@ -53,24 +60,27 @@ export default function HowItWorksSection() {
           transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
           className="max-w-3xl mb-20"
         >
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#FFFBEB] text-[#B45309] border border-[#FDE68A] text-xs font-semibold uppercase tracking-widest mb-4">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#fbefe3] text-[#c86d28] border border-[#f6ddc4] text-xs font-semibold uppercase tracking-widest mb-4">
             <GitCommit className="w-3.5 h-3.5" />
             <span>Autonomous Process Architecture</span>
           </div>
-          <h2 className="text-4xl sm:text-5xl font-bold leading-tight tracking-tight text-[#1C1917] mb-4">
+          <h2
+            className={`${dmSerif.className} text-4xl sm:text-5xl leading-tight tracking-tight text-[#1c1917] mb-4`}
+          >
             How it works from submission to resolution.
           </h2>
-          <p className="text-lg text-[#78716C]">
+          <p className="text-lg text-[#4a423a]">
             A continuous, transparent feedback loop powered by artificial intelligence and accountable departmental workflows.
           </p>
         </motion.div>
 
-        {/* Custom Horizontal Step Flow */}
+        {/* Custom Horizontal Step Flow (No Cards) */}
         <div className="relative mt-12">
+          
           {/* Desktop Connecting Line across steps */}
-          <div className="hidden lg:block absolute top-10 left-[10%] right-[10%] h-[2px] bg-[#E7E0D8] z-0">
+          <div className="hidden lg:block absolute top-10 left-[10%] right-[10%] h-[2px] bg-[#e6dfd3] z-0">
             {/* Active flow highlight segment */}
-            <div className="absolute top-0 left-0 h-full w-2/3 bg-gradient-to-r from-[#B45309] via-[#D97706] to-[#E7E0D8]" />
+            <div className="absolute top-0 left-0 h-full w-2/3 bg-gradient-to-r from-[#c86d28] via-[#1c1917] to-[#e6dfd3]" />
           </div>
 
           {/* Steps Grid */}
@@ -92,40 +102,42 @@ export default function HowItWorksSection() {
                 >
                   {/* Step Number & Circle Marker on the Line */}
                   <div className="flex items-center justify-between w-full mb-6">
-                    <div className="w-20 h-20 rounded-full bg-white border-2 border-[#E7E0D8] group-hover:border-[#B45309] flex items-center justify-center text-[#1C1917] transition-colors shadow-sm relative">
-                      <IconComponent className="w-8 h-8 stroke-[1.75] text-[#78716C] group-hover:text-[#B45309] transition-colors" />
-                      <span className="absolute -top-2 -right-1 px-2 py-0.5 bg-[#B45309] text-white font-mono text-xs font-bold rounded-full shadow">
+                    <div className="w-20 h-20 rounded-full bg-[#faf6f0] border-2 border-[#1c1917] group-hover:border-[#c86d28] flex items-center justify-center text-[#1c1917] transition-colors shadow-sm relative">
+                      <IconComponent className="w-8 h-8 stroke-[1.75] text-[#1c1917] group-hover:text-[#c86d28] transition-colors" />
+                      <span className="absolute -top-2 -right-1 px-2 py-0.5 bg-[#1c1917] text-white font-mono text-xs font-bold rounded-full shadow">
                         {step.num}
                       </span>
                     </div>
 
-                    {/* Arrow between steps (except last) on tablet/mobile */}
+                    {/* Arrow between steps (except last) on tablet/mobile or subtle indicator */}
                     {idx < steps.length - 1 && (
-                      <div className="hidden md:flex lg:hidden items-center text-[#D4C8BB] pr-4">
+                      <div className="hidden md:flex lg:hidden items-center text-[#d1c7b7] pr-4">
                         <ArrowRight className="w-6 h-6" />
                       </div>
                     )}
                   </div>
 
-                  {/* Step Title & Description */}
+                  {/* Step Title & Description (No box card around text, pure editorial layout) */}
                   <div className="space-y-2.5 pr-2">
-                    <h3 className="text-xl font-bold text-[#1C1917] tracking-tight flex items-center gap-2">
+                    <h3 className="text-xl font-bold text-[#1c1917] tracking-tight flex items-center gap-2">
                       <span>{step.title}</span>
                     </h3>
-                    <p className="text-sm sm:text-base text-[#78716C] leading-relaxed font-normal">
+                    <p className="text-sm sm:text-base text-[#4a423a] leading-relaxed font-normal">
                       {step.desc}
                     </p>
                   </div>
 
-                  {/* Mobile vertical connecting line */}
+                  {/* Mobile vertical connecting line (hidden on lg) */}
                   {idx < steps.length - 1 && (
-                    <div className="lg:hidden w-0.5 h-12 bg-[#E7E0D8] ml-10 my-4 md:hidden" />
+                    <div className="lg:hidden w-0.5 h-12 bg-[#e6dfd3] ml-10 my-4 md:hidden" />
                   )}
                 </motion.div>
               );
             })}
           </div>
+
         </div>
+
       </div>
     </section>
   );

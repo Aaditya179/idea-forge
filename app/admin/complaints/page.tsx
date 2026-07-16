@@ -58,9 +58,9 @@ export default function AdminAllComplaintsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-text-primary">All Complaints</h1>
-          <p className="text-sm text-text-secondary mt-1">
-            View and manage complaints across all departments
+          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-[#1c1917]">All Complaints</h1>
+          <p className="text-sm text-[#4a423a] mt-1">
+            View and manage civic grievances across all municipal departments
           </p>
         </div>
 
@@ -70,7 +70,7 @@ export default function AdminAllComplaintsPage() {
             id="admin-dept-filter"
             value={departmentFilter}
             onChange={(e) => setDepartmentFilter(e.target.value)}
-            className="px-3.5 py-2 rounded-xl border border-border bg-white text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent cursor-pointer"
+            className="px-3.5 py-2 rounded-xl border border-[#e6dfd3] bg-white text-sm text-[#1c1917] focus:outline-none focus:ring-2 focus:ring-[#c86d28] focus:border-transparent cursor-pointer shadow-sm"
           >
             <option value="">All Departments</option>
             {departments.map((dept) => (
@@ -84,7 +84,7 @@ export default function AdminAllComplaintsPage() {
             id="admin-status-filter"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as ComplaintStatus | "all")}
-            className="px-3.5 py-2 rounded-xl border border-border bg-white text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent cursor-pointer"
+            className="px-3.5 py-2 rounded-xl border border-[#e6dfd3] bg-white text-sm text-[#1c1917] focus:outline-none focus:ring-2 focus:ring-[#c86d28] focus:border-transparent cursor-pointer shadow-sm"
           >
             {STATUS_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
@@ -111,24 +111,24 @@ export default function AdminAllComplaintsPage() {
           </p>
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-border overflow-hidden">
+        <div className="bg-white rounded-2xl border border-[#e6dfd3] overflow-hidden shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-border bg-surface-raised">
-                  <th className="text-left text-xs font-semibold text-text-muted uppercase tracking-wider px-5 py-3">
+                <tr className="border-b border-[#e6dfd3] bg-[#faf6f0]">
+                  <th className="text-left text-xs font-mono font-bold text-[#7a6f64] uppercase tracking-wider px-5 py-3.5">
                     Complaint
                   </th>
-                  <th className="text-left text-xs font-semibold text-text-muted uppercase tracking-wider px-5 py-3">
+                  <th className="text-left text-xs font-mono font-bold text-[#7a6f64] uppercase tracking-wider px-5 py-3.5">
                     Citizen
                   </th>
-                  <th className="text-left text-xs font-semibold text-text-muted uppercase tracking-wider px-5 py-3">
+                  <th className="text-left text-xs font-mono font-bold text-[#7a6f64] uppercase tracking-wider px-5 py-3.5">
                     Department
                   </th>
-                  <th className="text-left text-xs font-semibold text-text-muted uppercase tracking-wider px-5 py-3">
+                  <th className="text-left text-xs font-mono font-bold text-[#7a6f64] uppercase tracking-wider px-5 py-3.5">
                     Status
                   </th>
-                  <th className="text-left text-xs font-semibold text-text-muted uppercase tracking-wider px-5 py-3">
+                  <th className="text-left text-xs font-mono font-bold text-[#7a6f64] uppercase tracking-wider px-5 py-3.5">
                     Date
                   </th>
                 </tr>
@@ -137,7 +137,7 @@ export default function AdminAllComplaintsPage() {
                 {complaints.map((complaint) => (
                   <tr
                     key={complaint.id}
-                    className="border-b border-border last:border-0 hover:bg-surface-raised transition-colors"
+                    className="border-b border-[#e6dfd3] last:border-0 hover:bg-[#faf6f0] transition-colors"
                   >
                     <td className="px-5 py-4">
                       <Link
