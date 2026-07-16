@@ -465,7 +465,8 @@ export default function OfficerComplaintDetailPage() {
     await updateComplaintStatus(supabase, complaint.id, "resolved");
     await createComplaintUpdate(supabase, {
       complaint_id: complaint.id,
-      note: `✅ AI Resolution Auditor verified closure. Confidence: ${auditResult.confidence_score}%. After photo uploaded. Reasoning: ${auditResult.reasoning}`,
+      // The [AFTER_IMAGE:url] marker is parsed by the citizen complaint page to show the verified resolution photo
+      note: `✅ AI Resolution Auditor verified closure. Confidence: ${auditResult.confidence_score}%. Reasoning: ${auditResult.reasoning} [AFTER_IMAGE:${auditResult.afterImageUrl}]`,
       status_at_time: "resolved",
       updated_by: profile.id,
     });
