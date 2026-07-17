@@ -207,8 +207,8 @@ function ResolutionAuditorPanel({
         <div className="flex items-center gap-3 rounded-xl border border-indigo-200 bg-indigo-50 p-4">
           <div className="w-5 h-5 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin shrink-0" />
           <div>
-            <p className="text-sm font-semibold text-indigo-800">AI Vision Audit Running…</p>
-            <p className="text-xs text-indigo-600 mt-0.5">Comparing before & after photos via Groq LLM — this takes ~5s</p>
+            <p className="text-sm font-semibold text-indigo-800">Multi-Agent Verification</p>
+            <p className="text-xs text-indigo-600 mt-0.5">Inspecting submitted repair evidence...</p>
           </div>
         </div>
       )}
