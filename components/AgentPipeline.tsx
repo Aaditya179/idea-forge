@@ -13,6 +13,7 @@ import {
   Loader2,
   X,
 } from "lucide-react";
+import { getReferenceNumber } from "@/lib/utils/referenceNumber";
 
 // ── Types for the pipeline props ────────────────────────────────────────────
 
@@ -327,7 +328,18 @@ export default function AgentPipeline({
         const priority = classifyResult?.priority || "medium";
         return (
           <div className="space-y-3">
-            <p className="text-xs text-text-secondary">ID: {complaintId.slice(0, 8)}… | Est: {getEstimatedTime(priority)}</p>
+            <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200">
+              <p className="text-sm font-bold text-emerald-800 flex items-center gap-1.5">
+                ✅ Complaint Registered Successfully
+              </p>
+              <div className="mt-2 pt-2 border-t border-emerald-200/60 flex items-center justify-between">
+                <span className="text-xs text-emerald-700 font-medium">Complaint Reference Number</span>
+                <span className="px-2.5 py-1 rounded-md bg-white border border-emerald-300 text-emerald-900 font-mono text-xs font-bold shadow-2xs">
+                  {getReferenceNumber(complaintId)}
+                </span>
+              </div>
+            </div>
+            <p className="text-xs text-text-secondary">Est. resolution: {getEstimatedTime(priority)}</p>
             <button
               onClick={onComplete}
               className="w-full px-4 py-2 rounded-xl bg-primary-600 text-white text-sm font-semibold hover:bg-primary-700 transition-colors"

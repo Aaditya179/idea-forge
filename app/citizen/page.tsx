@@ -8,6 +8,7 @@ import DuplicateBanner from "@/components/DuplicateBanner";
 import NewComplaintButton from "@/components/citizen/NewComplaintButton";
 import type { ComplaintStatus } from "@/lib/types";
 import { Search, Plus, FileText, Sparkles } from "lucide-react";
+import { getReferenceNumber } from "@/lib/utils/referenceNumber";
 
 export default async function CitizenDashboard() {
   const supabase = await createClient();
@@ -93,6 +94,9 @@ export default async function CitizenDashboard() {
                       {complaint.raw_text}
                     </p>
                     <div className="flex items-center gap-2.5 flex-wrap pt-1">
+                      <span className="px-2.5 py-0.5 rounded-md text-xs font-mono font-bold text-[#c86d28] bg-[#fdf8f4] border border-[#f3ded0]">
+                        Reference: {getReferenceNumber(complaint.id)}
+                      </span>
                       {complaint.category && (
                         <span className="px-2.5 py-0.5 rounded-md text-xs font-semibold text-[#4a423a] bg-[#faf6f0] border border-[#e6dfd3]">
                           {complaint.category}

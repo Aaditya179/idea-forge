@@ -18,6 +18,7 @@ import LoadingSpinner from "@/components/LoadingSpinner";
 import ErrorMessage from "@/components/ErrorMessage";
 import AISummaryCard from "@/components/officer/AISummaryCard";
 import SuggestedActionCard from "@/components/officer/SuggestedActionCard";
+import { getReferenceNumber } from "@/lib/utils/referenceNumber";
 import ComplaintsMapLoader from "@/components/admin/ComplaintsMapLoader";
 import type { ComplaintMapPoint } from "@/lib/queries/complaints";
 import type { Complaint, ComplaintUpdate as ComplaintUpdateType, ComplaintStatus } from "@/lib/types";
@@ -509,6 +510,10 @@ export default function OfficerComplaintDetailPage() {
                   Grievance Record
                 </span>
                 <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#1c1917]">Complaint Details</h1>
+                <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#faf6f0] border border-[#e6dfd3] text-xs font-mono font-bold text-[#c86d28]">
+                  <span>Reference No.</span>
+                  <span className="text-[#1c1917]">{getReferenceNumber(complaint.id)}</span>
+                </div>
               </div>
               <StatusBadge status={complaint.status as ComplaintStatus} />
             </div>
