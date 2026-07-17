@@ -4,6 +4,7 @@ import {
   executeToolCall,
   getDepartmentWorkload,
 } from "@/lib/agents/tools";
+import { resolveSpecificDepartment } from "@/lib/routing/departmentResolver";
 
 export interface TriageTraceItem {
   toolName: string;
@@ -118,6 +119,91 @@ function stripCodeFences(text: string): string {
   return cleaned.trim();
 }
 
+function normalizePriority(value: unknown): "low" | "medium" | "high" {
+  return value === "low" || value === "medium" || value === "high" ? value : "medium";
+}
+
+/**
+ * Turns a parsed model decision into a final TriageResult with a correctly
+ * resolved department. Resolution order:
+ *   1. Map the AI's category to a real department (synonym-aware).
+ *   2. If that fails (or the AI said "Other"), map the raw complaint text.
+ *   3. Only fall back to the "Other" department if BOTH fail.
+ *
+ * Logs every step so the classification decision is fully auditable.
+ */
+async function finalizeDecision(
+  parsed: Record<string, any>,
+  rawText: string,
+  complaintId: string,
+  trace: TriageTraceItem[]
+): Promise<TriageResult> {
+  const rawCategory = typeof parsed?.category === "string" ? parsed.category : "";
+  const rawDeptId =
+    parsed?.department_id && String(parsed.department_id) !== "null"
+      ? String(parsed.department_id)
+      : null;
+
+  console.log(
+    `[TriageAgent (${complaintId})] Parsed category: "${rawCategory}" | Parsed department_id: "${rawDeptId ?? ""}"`
+  );
+
+  // 1. Resolve from the AI category first.
+  let canonical = resolveSpecificDepartment(rawCategory);
+  let source: "ai_category" | "raw_text" = "ai_category";
+
+  // 2. If the AI gave no confident/specific category, fall back to the text.
+  if (!canonical) {
+    const fromText = resolveSpecificDepartment(rawText);
+    if (fromText) {
+      canonical = fromText;
+      source = "raw_text";
+    }
+  }
+
+  console.log(
+    `[TriageAgent (${complaintId})] Normalized department: "${canonical ?? "(no specific match)"}"` +
+      (canonical ? ` (source: ${source})` : "")
+  );
+
+  let departmentId: string | null = null;
+  let finalCategory: string;
+
+  if (canonical) {
+    const deptInfo = await getDepartmentWorkload(canonical);
+    departmentId = deptInfo.department_id;
+    finalCategory = deptInfo.department_name || canonical;
+    if (!departmentId) {
+      console.warn(
+        `[TriageAgent (${complaintId})] Resolved canonical "${canonical}" but no matching DB department id was found.`
+      );
+    }
+  } else {
+    // 3. Genuinely unclassifiable → "Other".
+    console.warn(
+      `[TriageAgent (${complaintId})] FALLBACK to "Other": neither AI category ("${rawCategory}") nor complaint text matched a known department.`
+    );
+    const otherInfo = await getDepartmentWorkload("Other");
+    departmentId = otherInfo.department_id;
+    finalCategory = otherInfo.department_name || "Other";
+  }
+
+  console.log(
+    `[TriageAgent (${complaintId})] FINAL → category: "${finalCategory}" | department_id: "${departmentId ?? "null"}"`
+  );
+
+  return {
+    category: finalCategory,
+    department_id: departmentId,
+    priority: normalizePriority(parsed?.priority),
+    reasoning: parsed?.reasoning || "Classified via agent triage.",
+    is_duplicate_of:
+      parsed?.is_duplicate_of && parsed.is_duplicate_of !== "null" ? parsed.is_duplicate_of : null,
+    escalated: Boolean(parsed?.escalated),
+    toolCallsTrace: trace,
+  };
+}
+
 /**
  * Fallback classification using a single direct Groq completion (no tools)
  * if the agent loop fails or exhausts without a clean response.
@@ -159,6 +245,7 @@ Do not return any other text, explanations, or markdown. Only valid JSON.`,
     ]);
 
     const resultText = response.choices[0]?.message?.content;
+    console.log(`[TriageAgent (${complaintId})] Raw AI response (fallback):`, resultText ?? "(empty)");
     if (resultText) {
       const parsed = JSON.parse(stripCodeFences(resultText));
       if (parsed.category) category = parsed.category;
@@ -171,17 +258,15 @@ Do not return any other text, explanations, or markdown. Only valid JSON.`,
     console.error(`[TriageAgent (${complaintId})] Fallback completion error:`, err);
   }
 
-  const deptInfo = await getDepartmentWorkload(category);
-
-  return {
-    category,
-    department_id: deptInfo.department_id || null,
-    priority,
-    reasoning: `Classified via fallback: ${summary}.`,
-    is_duplicate_of: null,
-    escalated: false,
-    toolCallsTrace: trace,
-  };
+  // Route through the same robust resolver. Even if the fallback LLM produced
+  // no/garbage category, finalizeDecision will still try to map the raw
+  // complaint text to a department before defaulting to "Other".
+  return await finalizeDecision(
+    { category, priority, reasoning: `Classified via fallback: ${summary}.` },
+    rawText,
+    complaintId,
+    trace
+  );
 }
 
 /**
@@ -282,26 +367,11 @@ export async function runTriageAgent(
               ]);
 
               const finalContent = finalResp.choices[0]?.message?.content || "";
+              console.log(`[TriageAgent (${complaintId})] Raw AI response (post-tools):`, finalContent);
               const cleanJson = stripCodeFences(finalContent);
               const parsed = JSON.parse(cleanJson);
 
-              let deptId = parsed.department_id || null;
-              if (!deptId && parsed.category) {
-                const deptInfo = await getDepartmentWorkload(parsed.category);
-                deptId = deptInfo.department_id || null;
-              }
-
-              return {
-                category: parsed.category || "Other",
-                department_id: deptId,
-                priority: ["low", "medium", "high"].includes(parsed.priority)
-                  ? (parsed.priority as "low" | "medium" | "high")
-                  : "medium",
-                reasoning: parsed.reasoning || "Classified via agent triage after tool exploration.",
-                is_duplicate_of: parsed.is_duplicate_of && parsed.is_duplicate_of !== "null" ? parsed.is_duplicate_of : null,
-                escalated: Boolean(parsed.escalated),
-                toolCallsTrace: trace,
-              };
+              return await finalizeDecision(parsed, rawText, complaintId, trace);
             } catch (finalErr) {
               console.warn(`[TriageAgent (${complaintId})] Failed to parse final answer after tool exhaustion:`, finalErr);
               break;
@@ -313,29 +383,12 @@ export async function runTriageAgent(
 
       // No tool calls returned -> the model produced its final JSON decision directly
       const contentText = message.content || "";
+      console.log(`[TriageAgent (${complaintId})] Raw AI response (direct):`, contentText);
       const cleanJsonText = stripCodeFences(contentText);
 
       try {
         const parsed = JSON.parse(cleanJsonText);
-        console.log(`[TriageAgent (${complaintId})] Successfully produced final decision:`, parsed);
-
-        let deptId = parsed.department_id || null;
-        if (!deptId && parsed.category) {
-          const deptInfo = await getDepartmentWorkload(parsed.category);
-          deptId = deptInfo.department_id || null;
-        }
-
-        return {
-          category: parsed.category || "Other",
-          department_id: deptId,
-          priority: ["low", "medium", "high"].includes(parsed.priority)
-            ? (parsed.priority as "low" | "medium" | "high")
-            : "medium",
-          reasoning: parsed.reasoning || "Classified via agent triage.",
-          is_duplicate_of: parsed.is_duplicate_of && parsed.is_duplicate_of !== "null" ? parsed.is_duplicate_of : null,
-          escalated: Boolean(parsed.escalated),
-          toolCallsTrace: trace,
-        };
+        return await finalizeDecision(parsed, rawText, complaintId, trace);
       } catch (parseErr) {
         console.warn(`[TriageAgent (${complaintId})] Iteration ${iteration}: Could not parse JSON directly: "${cleanJsonText}". Retrying...`);
         // If not last iteration, prompt model to output clean JSON

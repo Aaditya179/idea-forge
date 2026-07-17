@@ -1,4 +1,5 @@
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { resolveSpecificDepartment, normalizeText } from "@/lib/routing/departmentResolver";
 
 // Service role admin client for queries and updates
 const supabaseAdmin = createSupabaseClient(
@@ -149,14 +150,35 @@ export async function getDepartmentWorkload(department_id_or_category: string) {
         .single();
       department = data;
     } else {
-      // Try exact or case-insensitive name lookup
+      // Resolve a category label / department name to an actual DB department.
       const { data: allDepts } = await supabaseAdmin.from("departments").select("id, name");
-      if (allDepts) {
-        department =
-          allDepts.find((d) => d.name.toLowerCase() === department_id_or_category.toLowerCase()) ||
-          allDepts.find((d) => d.name.toLowerCase().includes(department_id_or_category.toLowerCase())) ||
-          allDepts.find((d) => d.name.toLowerCase() === "other") ||
-          null;
+      if (allDepts && allDepts.length > 0) {
+        const target = normalizeText(department_id_or_category);
+
+        // 1. Exact normalized match against a real department name
+        //    (handles "Other", "Roads", "Water Supply", "Electricity", "Sanitation").
+        department = allDepts.find((d) => normalizeText(d.name) === target) || null;
+
+        // 2. Robust synonym/keyword resolution → canonical name → DB department.
+        if (!department) {
+          const canonical = resolveSpecificDepartment(department_id_or_category);
+          if (canonical) {
+            const cn = normalizeText(canonical);
+            department =
+              allDepts.find((d) => normalizeText(d.name) === cn) ||
+              allDepts.find((d) => normalizeText(d.name).includes(cn) || cn.includes(normalizeText(d.name))) ||
+              null;
+          }
+        }
+        // NOTE: intentionally NOT defaulting to the "Other" department here.
+        // Returning null when there is no genuine match lets the caller apply
+        // a text-based safety net before deciding to fall back to "Other".
+      }
+
+      if (!department) {
+        console.warn(
+          `[getDepartmentWorkload] No department matched input "${department_id_or_category}" (normalized: "${normalizeText(department_id_or_category)}").`
+        );
       }
     }
 
