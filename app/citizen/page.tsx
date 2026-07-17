@@ -5,6 +5,7 @@ import { getCurrentProfile } from "@/lib/queries/profiles";
 import { getCitizenComplaints } from "@/lib/queries/complaints";
 import StatusBadge from "@/components/StatusBadge";
 import DuplicateBanner from "@/components/DuplicateBanner";
+import NewComplaintButton from "@/components/citizen/NewComplaintButton";
 import type { ComplaintStatus } from "@/lib/types";
 import { Search, Plus, FileText, Sparkles } from "lucide-react";
 
@@ -35,13 +36,10 @@ export default async function CitizenDashboard() {
             Hello, <span className="text-[#c86d28]">{firstName}</span>
           </h1>
         </div>
-        <Link
-          href="/citizen/new"
-          className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full text-sm font-semibold bg-[#c86d28] text-white hover:bg-[#b35c1e] transition-all shadow-sm hover:shadow-orange-900/20 active:scale-95 cursor-pointer shrink-0"
-        >
+        <NewComplaintButton className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full text-sm font-semibold bg-[#c86d28] text-white hover:bg-[#b35c1e] transition-all shadow-sm hover:shadow-orange-900/20 active:scale-95 cursor-pointer shrink-0">
           <Plus className="w-4 h-4 stroke-[2.5]" />
           <span>New Complaint</span>
-        </Link>
+        </NewComplaintButton>
       </div>
 
       {/* Search Card */}
@@ -64,13 +62,10 @@ export default async function CitizenDashboard() {
           <p className="text-base text-[#4a423a] mb-8 max-w-md mx-auto">
             Submit your first complaint to get instant, accurate municipal routing and live SLA tracking.
           </p>
-          <Link
-            href="/citizen/new"
-            className="inline-flex items-center gap-2.5 px-7 py-3.5 rounded-full bg-[#c86d28] text-white text-sm font-semibold hover:bg-[#b35c1e] transition-all shadow-sm hover:shadow-orange-900/20 active:scale-95 cursor-pointer"
-          >
+          <NewComplaintButton className="inline-flex items-center gap-2.5 px-7 py-3.5 rounded-full bg-[#c86d28] text-white text-sm font-semibold hover:bg-[#b35c1e] transition-all shadow-sm hover:shadow-orange-900/20 active:scale-95 cursor-pointer">
             <Plus className="w-4 h-4 stroke-[2.5]" />
             <span>Submit a Complaint</span>
-          </Link>
+          </NewComplaintButton>
         </div>
       ) : (
         <>
