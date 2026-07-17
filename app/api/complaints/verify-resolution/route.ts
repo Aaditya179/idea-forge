@@ -16,20 +16,36 @@ export async function POST(req: NextRequest) {
             ? [
                 {
                     type: "text",
-                    text: `You are a strict civic infrastructure quality auditor. You are given two field photos:
-• BEFORE PHOTO: The original complaint submitted by a citizen showing the problem.
+                    text: `You are a civic infrastructure repair auditor. You are given two field photos:
+• BEFORE PHOTO: The original complaint submitted by a citizen showing the reported problem.
 • AFTER PHOTO: The resolution photo submitted by a government officer claiming the issue is fixed.
 
-Your task: Compare both images and decide if the repair or fix is genuinely complete and satisfactory.
+Your goal is to verify whether there is visual evidence that an attempt has been made to resolve the complaint. Bias your decision toward APPROVAL (VERIFIED) whenever reasonable visual evidence of repair exists.
+
+APPROVE (VERIFIED) if ALL of these are true:
+1. The AFTER image is clearly different from the BEFORE image.
+2. The AFTER image shows the same general object or infrastructure (pipe, road, pole, drain, etc.).
+3. There is visible evidence of maintenance, repair, replacement, installation, cleaning, or modification.
+4. The reported defect is no longer obviously visible, OR there is clear evidence that work has been performed to address it.
+
+Do NOT reject simply because: the repair method differs from what you expected; a clamp, patch, replacement part, or reinforcement is visible; the object looks different after the repair; the camera angle changes; the background changes; the repair is not aesthetically perfect; or the exact defect (e.g. the precise leak point) cannot be visually confirmed.
+
+Only REJECT if ANY of these are true:
+• The AFTER image is essentially the same as the BEFORE image with no meaningful changes.
+• The reported issue is still clearly visible with no work done.
+• The AFTER image is unrelated to the complaint (a different type of object/scene).
+• The AFTER image is too blurry or unusable to assess.
+
+Completely ignore and do NOT mention: background, surroundings, camera angle, camera distance, GPS or location differences, lighting, or perspective. These MUST NOT affect your decision or appear in your reasoning.
+
+Examples that should be APPROVED: leaking pipe → pipe repaired with a clamp; pothole → fresh asphalt patch; broken streetlight → new streetlight installed; garbage pile → area cleaned.
 
 Respond with ONLY a JSON object in this exact format, no markdown, no extra text:
 {
   "status": "VERIFIED" or "REJECTED",
   "confidence_score": <number 0-100>,
-  "reasoning": "<One to two sentences explaining your technical verdict based on visual evidence.>"
-}
-
-Be strict: partial fixes, unrelated photos, or obvious mismatches must be REJECTED.`,
+  "reasoning": "<One to two concise sentences. When approving, state what visible repair or maintenance was detected. When rejecting, state which reject condition applies.>"
+}`,
                 },
                 {
                     type: "image_url",

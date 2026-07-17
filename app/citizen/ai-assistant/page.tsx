@@ -3,14 +3,15 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
+import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import { getCurrentProfile } from "@/lib/queries/profiles";
 import { getDepartmentByName } from "@/lib/queries/departments";
 import { createComplaint, uploadComplaintImage } from "@/lib/queries/complaints";
 import { classifyComplaint } from "@/lib/routing/keywordRouter";
 import VoiceInput from "@/components/VoiceInput";
+import AgentOrchestration from "@/components/citizen/AgentOrchestration";
 import type { LocationData } from "@/components/LocationPicker";
-import type { Priority } from "@/lib/types";
 import {
   Bot,
   MapPin,
@@ -18,11 +19,10 @@ import {
   Check,
   Loader2,
   X,
-  ArrowLeft,
-  ArrowRight,
   ImagePlus,
-  CheckCircle2,
-  Circle,
+  Send,
+  ArrowLeft,
+  Sparkles,
 } from "lucide-react";
 
 // Reuse the exact same Leaflet map component the manual flow uses.
@@ -38,48 +38,43 @@ const LocationPickerMap = dynamic(() => import("@/components/LocationPickerMap")
 
 const MUMBAI_CENTER: [number, number] = [19.076, 72.8777];
 
-// Conversation steps (Photo is optional, Review is terminal)
-type Step = "location" | "problem" | "duration" | "photo" | "review";
-
-const STEPS: { key: Step; label: string; optional?: boolean }[] = [
-  { key: "location", label: "Location" },
-  { key: "problem", label: "Problem" },
-  { key: "duration", label: "Duration" },
-  { key: "photo", label: "Photo", optional: true },
-  { key: "review", label: "Review" },
-];
-
-type LocStatus = "requesting" | "found" | "denied" | "map";
+// Conversation phases. "transition" renders no interactive area while the
+// assistant is typing between steps.
+type Phase =
+  | "greeting"
+  | "location-confirm"
+  | "location-denied"
+  | "location-map"
+  | "problem"
+  | "duration"
+  | "photo"
+  | "review"
+  | "transition"
+  | "orchestrating";
 
 interface ChatMessage {
   role: "assistant" | "user";
   text: string;
 }
 
-// Lightweight local urgency heuristic for the review preview.
-// The authoritative priority is still assigned by /api/classify on submit.
-function estimatePriority(text: string): Priority {
-  const t = text.toLowerCase();
-  const high = [
-    "leak", "burst", "fire", "accident", "danger", "shock", "electrocut",
-    "overflow", "no water", "outage", "collapse", "flood", "sewage", "gas",
-    "injury", "urgent", "emergency",
-  ];
-  const low = ["minor", "small", "slightly", "cosmetic", "sometimes", "occasionally"];
-  if (high.some((w) => t.includes(w))) return "high";
-  if (low.some((w) => t.includes(w))) return "low";
-  return "medium";
+interface SubmitResult {
+  complaintId: string;
+  category: string;
+  department: string;
+  priority: string;
 }
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export default function AIAssistantPage() {
   const router = useRouter();
   const supabase = createClient();
 
-  const [step, setStep] = useState<Step>("location");
+  const [phase, setPhase] = useState<Phase>("greeting");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [isTyping, setIsTyping] = useState(false);
 
   // --- Location state ---
-  const [locStatus, setLocStatus] = useState<LocStatus>("requesting");
   const [detected, setDetected] = useState<{ lat: number; lng: number; address: string } | null>(null);
   const [locError, setLocError] = useState("");
   const [confirmedLocation, setConfirmedLocation] = useState<LocationData | null>(null);
@@ -98,36 +93,53 @@ export default function AIAssistantPage() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   // --- Submit state ---
-  const [submitting, setSubmitting] = useState(false);
+  const [result, setResult] = useState<SubmitResult | null>(null);
   const [submitError, setSubmitError] = useState("");
 
-  const chatEndRef = useRef<HTMLDivElement | null>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const greetedRef = useRef(false);
 
   const pushMessage = useCallback((msg: ChatMessage) => {
     setMessages((prev) => [...prev, msg]);
   }, []);
 
-  // Auto-scroll the transcript
+  // Type an assistant message with a "thinking" delay, then the bubble.
+  const typeAssistant = useCallback(
+    async (text: string, thinkMs = 800) => {
+      setIsTyping(true);
+      await sleep(thinkMs);
+      setIsTyping(false);
+      setMessages((prev) => [...prev, { role: "assistant", text }]);
+      await sleep(180);
+    },
+    []
+  );
+
+  // Auto-scroll to newest content
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, step, locStatus]);
+    scrollRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, isTyping, phase, result]);
 
   // --- Reverse geocode (reuses existing API route) ---
-  const reverseGeocode = useCallback(async (lat: number, lng: number, signal?: AbortSignal): Promise<string> => {
-    const res = await fetch(`/api/reverse-geocode?lat=${lat}&lon=${lng}`, { signal });
-    if (!res.ok) throw new Error("Failed to reverse geocode");
-    const data = await res.json();
-    return data.address ?? `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-  }, []);
+  const reverseGeocode = useCallback(
+    async (lat: number, lng: number, signal?: AbortSignal): Promise<string> => {
+      const res = await fetch(`/api/reverse-geocode?lat=${lat}&lon=${lng}`, { signal });
+      if (!res.ok) throw new Error("Failed to reverse geocode");
+      const data = await res.json();
+      return data.address ?? `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+    },
+    []
+  );
 
-  // --- Immediately request browser location on entering the location step ---
-  const requestLocation = useCallback(() => {
-    setLocStatus("requesting");
+  // --- Location acquisition ---
+  const requestLocation = useCallback(async () => {
     setLocError("");
+    setPhase("transition");
 
     if (typeof navigator === "undefined" || !navigator.geolocation) {
-      setLocStatus("denied");
       setLocError("Geolocation is not supported by your browser. Please select on the map.");
+      await typeAssistant("I couldn't access location on this browser. You can pick the spot on the map instead.", 700);
+      setPhase("location-denied");
       return;
     }
 
@@ -135,62 +147,67 @@ export default function AIAssistantPage() {
       async (position) => {
         const lat = position.coords.latitude;
         const lng = position.coords.longitude;
+        let address: string;
         try {
-          const address = await reverseGeocode(lat, lng);
-          setDetected({ lat, lng, address });
+          address = await reverseGeocode(lat, lng);
         } catch {
-          setDetected({ lat, lng, address: `${lat.toFixed(5)}, ${lng.toFixed(5)}` });
+          address = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
         }
-        setLocStatus("found");
+        setDetected({ lat, lng, address });
+        await typeAssistant(`I found this location:\n\n📍 ${address}\n\nIs the complaint here?`, 700);
+        setPhase("location-confirm");
       },
-      (err) => {
+      async (err) => {
         let msg = "Couldn't get your location. Please select on the map instead.";
         if (err.code === err.PERMISSION_DENIED) {
-          msg = "Location permission denied. Please select on the map instead.";
+          msg = "Location permission was denied. No problem — you can pick the spot on the map.";
         }
         setLocError(msg);
-        setLocStatus("denied");
+        await typeAssistant(msg, 700);
+        setPhase("location-denied");
       },
       { enableHighAccuracy: true, timeout: 8000 }
     );
-  }, [reverseGeocode]);
+  }, [reverseGeocode, typeAssistant]);
 
-  // Kick off geolocation once on mount
+  // --- Greeting sequence (runs once) ---
   useEffect(() => {
-    requestLocation();
-  }, [requestLocation]);
+    if (greetedRef.current) return;
+    greetedRef.current = true;
+    (async () => {
+      await typeAssistant("Hello! Welcome to CivicPulse.", 600);
+      await typeAssistant("I'll help you register your complaint.", 900);
+      await typeAssistant("First, let me check your current location…", 900);
+      await requestLocation();
+    })();
+  }, [typeAssistant, requestLocation]);
 
   // Cleanup geocode abort on unmount
   useEffect(() => {
     return () => geocodeAbortRef.current?.abort();
   }, []);
 
-  // --- Advance from location to the conversation ---
-  const confirmLocationAndBegin = useCallback(
-    (loc: LocationData) => {
+  // --- After a location is chosen, move into the conversation ---
+  const proceedAfterLocation = useCallback(
+    async (loc: LocationData) => {
       setConfirmedLocation(loc);
-      setMessages([
-        { role: "assistant", text: "Great — I've noted your location." },
-        { role: "user", text: `📍 ${loc.locationText}` },
-        { role: "assistant", text: "What problem are you facing? You can type or speak in English, Hindi, or Hinglish." },
-      ]);
-      setStep("problem");
+      setPhase("transition");
+      pushMessage({ role: "user", text: `✅ ${loc.locationText}` });
+      await typeAssistant("Perfect!", 500);
+      await typeAssistant("Please tell me what happened.", 800);
+      setPhase("problem");
     },
-    []
+    [pushMessage, typeAssistant]
   );
 
   const handleUseDetected = useCallback(() => {
     if (!detected) return;
-    confirmLocationAndBegin({
-      lat: detected.lat,
-      lng: detected.lng,
-      locationText: detected.address,
-    });
-  }, [detected, confirmLocationAndBegin]);
+    proceedAfterLocation({ lat: detected.lat, lng: detected.lng, locationText: detected.address });
+  }, [detected, proceedAfterLocation]);
 
   // --- Map picker handlers (reuse LocationPickerMap) ---
   const openMap = useCallback(() => {
-    setLocStatus("map");
+    setPhase("location-map");
     if (detected) {
       setMapCenter([detected.lat, detected.lng]);
       setPendingMarker([detected.lat, detected.lng]);
@@ -223,34 +240,33 @@ export default function AIAssistantPage() {
 
   const confirmMap = useCallback(() => {
     if (!pendingMarker || !pendingAddress) return;
-    confirmLocationAndBegin({
-      lat: pendingMarker[0],
-      lng: pendingMarker[1],
-      locationText: pendingAddress,
-    });
-  }, [pendingMarker, pendingAddress, confirmLocationAndBegin]);
+    proceedAfterLocation({ lat: pendingMarker[0], lng: pendingMarker[1], locationText: pendingAddress });
+  }, [pendingMarker, pendingAddress, proceedAfterLocation]);
 
   // --- Conversation handlers ---
-  const submitProblem = useCallback(() => {
+  const submitProblem = useCallback(async () => {
     if (!problem.trim()) return;
-    pushMessage({ role: "user", text: problem.trim() });
-    pushMessage({ role: "assistant", text: "How long has this issue existed?" });
-    setStep("duration");
-  }, [problem, pushMessage]);
+    const text = problem.trim();
+    setPhase("transition");
+    pushMessage({ role: "user", text });
+    await typeAssistant("Got it. Since when has this been happening?", 800);
+    setPhase("duration");
+  }, [problem, pushMessage, typeAssistant]);
 
   const submitDuration = useCallback(
-    (value: string) => {
+    async (value: string) => {
       const v = value.trim();
       if (!v) return;
       setDuration(v);
+      setPhase("transition");
       pushMessage({ role: "user", text: v });
-      pushMessage({
-        role: "assistant",
-        text: "Would you like to upload a photo of the issue? This is optional.",
-      });
-      setStep("photo");
+      await typeAssistant(
+        "Would you like to upload a photo? It helps the department verify the complaint faster.",
+        800
+      );
+      setPhase("photo");
     },
-    [pushMessage]
+    [pushMessage, typeAssistant]
   );
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -264,51 +280,44 @@ export default function AIAssistantPage() {
   };
 
   const goToReview = useCallback(
-    (withPhoto: boolean) => {
-      pushMessage({
-        role: "user",
-        text: withPhoto ? "📷 Photo attached" : "Skipped photo",
-      });
-      pushMessage({
-        role: "assistant",
-        text: "Thanks! I've prepared your complaint. Please review the details before submitting.",
-      });
-      setStep("review");
+    async (withPhoto: boolean) => {
+      setPhase("transition");
+      pushMessage({ role: "user", text: withPhoto ? "📷 Photo attached" : "Skip photo" });
+      await typeAssistant("Perfect! Here's what I understood.", 700);
+      setPhase("review");
     },
-    [pushMessage]
+    [pushMessage, typeAssistant]
   );
 
   // --- Derived review data (reuses keyword classifier for category/department) ---
-  const fullText = duration
-    ? `${problem.trim()}\n\n(Issue duration: ${duration})`
-    : problem.trim();
+  const fullText = duration ? `${problem.trim()}\n\n(Issue duration: ${duration})` : problem.trim();
   const { category, departmentName } = classifyComplaint(problem);
-  const previewPriority = estimatePriority(fullText);
 
   // --- Submit via the EXISTING complaint submission infrastructure ---
+  // NOTE: The backend calls below are unchanged. The orchestration modal is a
+  // pure visualization that reflects the real `result` / `submitError` set here.
   const handleSubmit = useCallback(async () => {
     if (!confirmedLocation) return;
-    setSubmitting(true);
     setSubmitError("");
+    setResult(null);
+    setPhase("orchestrating");
 
     try {
-      // 1. Current user's profile
+      // 1. Profile
       const profile = await getCurrentProfile(supabase);
       if (!profile) {
         setSubmitError("Unable to load your profile. Please sign in again.");
-        setSubmitting(false);
         return;
       }
 
-      // 2. Resolve department from the keyword-classified name (same as manual flow)
+      // 2. Resolve department from keyword-classified name (same as manual flow)
       const department = await getDepartmentByName(supabase, departmentName);
       if (!department) {
         setSubmitError("Unable to resolve department. Please try again.");
-        setSubmitting(false);
         return;
       }
 
-      // 3. Upload the optional photo
+      // 3. Upload the optional photo (must happen before insert — image_url is stored on the row)
       let imageUrl: string | null = null;
       if (imageFile) {
         imageUrl = await uploadComplaintImage(supabase, imageFile, profile.id);
@@ -328,127 +337,121 @@ export default function AIAssistantPage() {
 
       if (!complaint) {
         setSubmitError("Failed to submit complaint. Please try again.");
-        setSubmitting(false);
         return;
       }
 
-      // 5. Run the existing AI classification pipeline (sets category/department/priority in DB)
+      // 5. AI classification pipeline (sets category/department/priority in DB)
+      let finalCategory = category;
+      let finalPriority = "medium";
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 8000);
-        await fetch("/api/classify", {
+        const res = await fetch("/api/classify", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ complaintId: complaint.id, rawText: fullText }),
           signal: controller.signal,
         });
         clearTimeout(timeoutId);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.category) finalCategory = data.category;
+          if (data.priority) finalPriority = data.priority;
+        }
       } catch (err) {
-        // Non-fatal: the complaint is already stored with keyword classification.
         console.warn("[AI Assistant] classification pipeline failed:", err);
       }
 
-      // 6. Done — return to the citizen dashboard
-      router.push("/citizen");
-      router.refresh();
+      // 6. Duplicate detection (reuses existing API, same as manual flow)
+      try {
+        const { data: fresh } = await supabase
+          .from("complaints")
+          .select("department_id, priority")
+          .eq("id", complaint.id)
+          .single();
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 14000);
+        await fetch("/api/check-duplicates", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            complaintId: complaint.id,
+            rawText: fullText,
+            lat: confirmedLocation.lat,
+            lng: confirmedLocation.lng,
+            departmentId: fresh?.department_id || department.id,
+            priority: fresh?.priority || finalPriority,
+          }),
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+      } catch (err) {
+        console.warn("[AI Assistant] duplicate check failed:", err);
+      }
+
+      // 7. Real submission succeeded — hand the true result to the modal.
+      setResult({
+        complaintId: complaint.id,
+        category: finalCategory,
+        department: finalCategory,
+        priority: finalPriority,
+      });
     } catch (err) {
       console.error("[AI Assistant] submission error:", err);
       setSubmitError("An unexpected error occurred. Please try again.");
-      setSubmitting(false);
     }
-  }, [confirmedLocation, supabase, departmentName, imageFile, fullText, category, router]);
+  }, [confirmedLocation, supabase, departmentName, imageFile, fullText, category]);
 
-  const activeStepIndex = STEPS.findIndex((s) => s.key === step);
+  const showComposer = !isTyping;
 
   return (
-    <div className="max-w-3xl mx-auto">
+    <div className="max-w-2xl mx-auto flex flex-col min-h-[calc(100vh-8rem)]">
       {/* Header */}
-      <div className="flex items-start gap-3 mb-6">
+      <div className="flex items-start gap-3 mb-5">
         <div className="w-11 h-11 rounded-xl bg-[#c86d28] flex items-center justify-center shrink-0 shadow-sm">
           <Bot className="w-5 h-5 text-white" />
         </div>
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#1c1917]">
-            CivicPulse AI Complaint Assistant
-          </h1>
-          <p className="text-sm text-[#4a423a] mt-1">
-            I&apos;ll collect the required details and prepare your complaint for review.
+          <h1 className="text-2xl font-bold tracking-tight text-[#1c1917]">CivicPulse AI Assistant</h1>
+          <p className="text-sm text-[#4a423a] mt-0.5 max-w-md">
+            I&apos;m here to help you register your complaint. Just answer naturally and I&apos;ll prepare
+            everything for you.
           </p>
         </div>
       </div>
 
-      {/* Progress indicator */}
-      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 mb-6 p-4 rounded-xl bg-white border border-[#e6dfd3] shadow-sm">
-        {STEPS.map((s, i) => {
-          const done = i < activeStepIndex;
-          const current = i === activeStepIndex;
-          return (
-            <div key={s.key} className="flex items-center gap-1.5">
-              {done ? (
-                <CheckCircle2 className="w-4 h-4 text-[#c86d28]" />
-              ) : (
-                <Circle className={`w-4 h-4 ${current ? "text-[#c86d28]" : "text-[#c9bfb2]"}`} />
-              )}
-              <span
-                className={`text-sm ${
-                  current
-                    ? "font-bold text-[#1c1917]"
-                    : done
-                    ? "font-medium text-[#4a423a]"
-                    : "text-[#7a6f64]"
-                }`}
-              >
-                {s.label}
-                {s.optional && <span className="text-[#7a6f64] font-normal"> (Optional)</span>}
-              </span>
-            </div>
-          );
-        })}
-      </div>
+      {/* Conversation */}
+      <div className="flex-1 space-y-3">
+        {messages.map((m, i) => (
+          <Bubble key={i} role={m.role}>
+            {m.text}
+          </Bubble>
+        ))}
 
-      {/* Conversation transcript */}
-      {messages.length > 0 && (
-        <div className="space-y-3 mb-5">
-          {messages.map((m, i) => (
-            <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-              <div
-                className={`max-w-[80%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${
-                  m.role === "user"
-                    ? "bg-[#c86d28] text-white rounded-br-md"
-                    : "bg-white border border-[#e6dfd3] text-[#1c1917] rounded-bl-md"
-                }`}
-              >
-                {m.text}
+        {/* Typing indicator */}
+        <AnimatePresence>
+          {isTyping && (
+            <motion.div
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className="flex justify-start"
+            >
+              <div className="flex items-center gap-1.5 px-4 py-3 rounded-2xl rounded-bl-md bg-white border border-[#e6dfd3]">
+                <span className="w-2 h-2 rounded-full bg-[#c86d28]/70 animate-bounce" style={{ animationDelay: "0ms" }} />
+                <span className="w-2 h-2 rounded-full bg-[#c86d28]/70 animate-bounce" style={{ animationDelay: "150ms" }} />
+                <span className="w-2 h-2 rounded-full bg-[#c86d28]/70 animate-bounce" style={{ animationDelay: "300ms" }} />
               </div>
-            </div>
-          ))}
-        </div>
-      )}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-      {/* Active step card */}
-      <div className="bg-white rounded-2xl border border-[#e6dfd3] p-6 shadow-sm">
-        {/* ---------------- LOCATION STEP ---------------- */}
-        {step === "location" && (
-          <div className="space-y-4">
-            {locStatus === "requesting" && (
-              <div className="flex items-center gap-3 text-[#4a423a]">
-                <Loader2 className="w-5 h-5 animate-spin text-[#c86d28]" />
-                <p className="text-sm font-medium">Requesting your location…</p>
-              </div>
-            )}
-
-            {locStatus === "found" && detected && (
-              <div className="space-y-4">
-                <div className="flex items-start gap-3 p-4 rounded-xl bg-[#fbefe3]/60 border border-[#f6ddc4]">
-                  <MapPin className="w-5 h-5 text-[#c86d28] mt-0.5 shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-sm font-bold text-[#1c1917]">I found your current location</p>
-                    <p className="text-sm text-[#4a423a] mt-0.5 break-words">{detected.address}</p>
-                    <p className="text-[11px] text-[#7a6f64] font-mono mt-1">
-                      {detected.lat.toFixed(5)}, {detected.lng.toFixed(5)}
-                    </p>
-                  </div>
-                </div>
+        {/* --------- Interactive assistant widgets (left-aligned like the AI) --------- */}
+        {showComposer && (phase === "location-confirm" || phase === "location-denied") && (
+          <AssistantWidget>
+            {phase === "location-confirm" && detected && (
+              <div className="space-y-3">
                 <p className="text-sm font-semibold text-[#1c1917]">Is the complaint at this location?</p>
                 <div className="flex flex-wrap gap-3">
                   <button
@@ -471,329 +474,378 @@ export default function AIAssistantPage() {
               </div>
             )}
 
-            {locStatus === "denied" && (
-              <div className="space-y-4">
-                <p className="text-sm text-[#9e3333] font-medium flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#9e3333] shrink-0" />
-                  {locError}
-                </p>
-                <div className="flex flex-wrap gap-3">
-                  <button
-                    type="button"
-                    onClick={requestLocation}
-                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-[#e6dfd3] bg-white text-sm font-semibold text-[#4a423a] hover:bg-[#faf6f0] transition-colors cursor-pointer"
-                  >
-                    <Navigation className="w-4 h-4 text-[#c86d28]" />
-                    Retry location
-                  </button>
-                  <button
-                    type="button"
-                    onClick={openMap}
-                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#c86d28] text-white text-sm font-semibold hover:bg-[#b35c1e] transition-colors cursor-pointer"
-                  >
-                    <MapPin className="w-4 h-4" />
-                    Select on Map
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {locStatus === "map" && (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-semibold text-[#1c1917]">
-                    Tap anywhere on the map to drop a pin
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setLocStatus(detected ? "found" : "denied")}
-                    className="text-[#7a6f64] hover:text-[#1c1917] transition-colors cursor-pointer"
-                    aria-label="Cancel map selection"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-
-                <div
-                  className="relative z-0 isolate h-72 rounded-xl overflow-hidden border border-[#e6dfd3]"
-                  style={{ isolation: "isolate", zIndex: 0 }}
-                >
-                  <LocationPickerMap
-                    center={mapCenter}
-                    marker={pendingMarker}
-                    onMapClick={handleMapClick}
-                    zoom={14}
-                    className="h-full"
-                  />
-                </div>
-
-                <div className="min-h-[2.5rem]">
-                  {geocoding && (
-                    <div className="flex items-center gap-2 text-xs text-[#7a6f64]">
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      Resolving address…
-                    </div>
-                  )}
-                  {!geocoding && pendingAddress && (
-                    <div className="flex items-start gap-2">
-                      <MapPin className="w-3.5 h-3.5 text-[#c86d28] mt-0.5 shrink-0" />
-                      <p className="text-xs text-[#4a423a] leading-relaxed">{pendingAddress}</p>
-                    </div>
-                  )}
-                  {!pendingMarker && !geocoding && (
-                    <p className="text-xs text-[#7a6f64]">No pin dropped yet — tap the map above.</p>
-                  )}
-                </div>
-
-                <div className="flex gap-3">
-                  <button
-                    type="button"
-                    onClick={confirmMap}
-                    disabled={!pendingMarker || !pendingAddress || geocoding}
-                    className="flex-1 py-2.5 rounded-full bg-[#c86d28] text-white text-sm font-semibold hover:bg-[#b35c1e] disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
-                  >
-                    Confirm Location
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setLocStatus(detected ? "found" : "denied")}
-                    className="px-5 py-2.5 rounded-full border border-[#e6dfd3] bg-white text-sm font-semibold text-[#4a423a] hover:bg-[#faf6f0] transition-colors cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ---------------- PROBLEM STEP ---------------- */}
-        {step === "problem" && (
-          <div className="space-y-3">
-            <label htmlFor="ai-problem" className="block text-sm font-bold text-[#1c1917]">
-              Describe the problem
-            </label>
-            <textarea
-              id="ai-problem"
-              value={problem}
-              onChange={(e) => setProblem(e.target.value)}
-              rows={4}
-              autoFocus
-              className="w-full px-4 py-3 rounded-xl border border-[#e6dfd3] bg-[#faf6f0] text-sm text-[#1c1917] placeholder:text-[#7a6f64] focus:outline-none focus:ring-2 focus:ring-[#c86d28] focus:border-transparent resize-none"
-              placeholder="E.g., Water pipe burst near Sector 14 market flooding the road…"
-            />
-            <VoiceInput value={problem} onChange={setProblem} textareaId="ai-problem" />
-            <div className="flex justify-end">
-              <button
-                type="button"
-                onClick={submitProblem}
-                disabled={!problem.trim()}
-                className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-[#c86d28] text-white text-sm font-semibold hover:bg-[#b35c1e] disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
-              >
-                Continue
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* ---------------- DURATION STEP ---------------- */}
-        {step === "duration" && (
-          <DurationInput onSubmit={submitDuration} />
-        )}
-
-        {/* ---------------- PHOTO STEP ---------------- */}
-        {step === "photo" && (
-          <div className="space-y-4">
-            <p className="text-sm font-bold text-[#1c1917]">Attach a photo (optional)</p>
-            {imagePreview ? (
-              <div className="relative rounded-xl overflow-hidden border border-[#e6dfd3]">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={imagePreview} alt="Complaint attachment preview" className="w-full h-56 object-cover" />
+            {phase === "location-denied" && (
+              <div className="flex flex-wrap gap-3">
                 <button
                   type="button"
-                  onClick={() => {
-                    setImageFile(null);
-                    setImagePreview(null);
-                  }}
-                  className="absolute top-3 right-3 w-8 h-8 rounded-full bg-[#1c1917]/80 text-white flex items-center justify-center hover:bg-[#1c1917] transition-colors cursor-pointer"
-                  aria-label="Remove photo"
+                  onClick={requestLocation}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-[#e6dfd3] bg-white text-sm font-semibold text-[#4a423a] hover:bg-[#faf6f0] transition-colors cursor-pointer"
+                >
+                  <Navigation className="w-4 h-4 text-[#c86d28]" />
+                  Retry location
+                </button>
+                <button
+                  type="button"
+                  onClick={openMap}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#c86d28] text-white text-sm font-semibold hover:bg-[#b35c1e] transition-colors cursor-pointer"
+                >
+                  <MapPin className="w-4 h-4" />
+                  Select on Map
+                </button>
+              </div>
+            )}
+          </AssistantWidget>
+        )}
+
+        {/* Map picker */}
+        {showComposer && phase === "location-map" && (
+          <AssistantWidget>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold text-[#1c1917]">Tap the map to drop a pin</p>
+                <button
+                  type="button"
+                  onClick={() => setPhase(detected ? "location-confirm" : "location-denied")}
+                  className="text-[#7a6f64] hover:text-[#1c1917] transition-colors cursor-pointer"
+                  aria-label="Cancel map selection"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
-            ) : (
-              <label
-                htmlFor="ai-image"
-                className="flex flex-col items-center justify-center w-full h-40 rounded-xl border-2 border-dashed border-[#e6dfd3] hover:border-[#c86d28] bg-[#faf6f0] transition-all cursor-pointer"
+
+              <div
+                className="relative z-0 isolate h-72 rounded-xl overflow-hidden border border-[#e6dfd3]"
+                style={{ isolation: "isolate", zIndex: 0 }}
               >
-                <ImagePlus className="w-7 h-7 text-[#7a6f64] mb-2" />
-                <span className="text-sm font-semibold text-[#4a423a]">Click to attach a photo</span>
-                <span className="text-xs text-[#7a6f64] font-mono mt-0.5">PNG, JPG, WEBP</span>
-                <input id="ai-image" type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
-              </label>
-            )}
-            <div className="flex justify-between">
-              <button
-                type="button"
-                onClick={() => goToReview(false)}
-                className="px-5 py-2.5 rounded-full border border-[#e6dfd3] bg-white text-sm font-semibold text-[#4a423a] hover:bg-[#faf6f0] transition-colors cursor-pointer"
-              >
-                Skip
-              </button>
-              <button
-                type="button"
-                onClick={() => goToReview(!!imageFile)}
-                className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-[#c86d28] text-white text-sm font-semibold hover:bg-[#b35c1e] transition-colors cursor-pointer"
-              >
-                Continue to review
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* ---------------- REVIEW STEP ---------------- */}
-        {step === "review" && confirmedLocation && (
-          <div className="space-y-5">
-            <h2 className="text-lg font-bold text-[#1c1917]">Review your complaint</h2>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <ReviewField label="Category" value={category} />
-              <ReviewField label="Department" value={departmentName} />
-              <ReviewField
-                label="Priority"
-                value={previewPriority.charAt(0).toUpperCase() + previewPriority.slice(1)}
-                hint="AI confirms final priority on submission"
-              />
-              <ReviewField label="Duration" value={duration || "—"} />
-            </div>
-
-            <ReviewField label="Location" value={confirmedLocation.locationText} />
-
-            <div>
-              <p className="text-xs font-bold text-[#7a6f64] uppercase tracking-wider mb-1.5">
-                Complaint Description
-              </p>
-              <p className="text-sm text-[#1c1917] leading-relaxed whitespace-pre-wrap p-3 rounded-xl bg-[#faf6f0] border border-[#e6dfd3]">
-                {problem}
-              </p>
-            </div>
-
-            {imagePreview && (
-              <div>
-                <p className="text-xs font-bold text-[#7a6f64] uppercase tracking-wider mb-1.5">Photo</p>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={imagePreview}
-                  alt="Complaint attachment"
-                  className="rounded-xl border border-[#e6dfd3] max-h-56 object-cover"
+                <LocationPickerMap
+                  center={mapCenter}
+                  marker={pendingMarker}
+                  onMapClick={handleMapClick}
+                  zoom={14}
+                  className="h-full"
                 />
               </div>
-            )}
 
-            {submitError && (
-              <div className="p-4 rounded-xl bg-[#fde8e8] border border-[#9e3333]/20 text-sm font-semibold text-[#9e3333]">
-                {submitError}
-              </div>
-            )}
-
-            <div className="flex items-center justify-between pt-2 border-t border-[#e6dfd3]">
-              <button
-                type="button"
-                onClick={() => setStep("problem")}
-                disabled={submitting}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-[#e6dfd3] bg-white text-sm font-semibold text-[#4a423a] hover:bg-[#faf6f0] disabled:opacity-50 transition-colors cursor-pointer"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                Edit
-              </button>
-              <button
-                type="button"
-                onClick={handleSubmit}
-                disabled={submitting}
-                className="inline-flex items-center gap-2 px-7 py-2.5 rounded-full bg-[#c86d28] text-white text-sm font-semibold hover:bg-[#b35c1e] disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
-              >
-                {submitting ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Submitting…
-                  </>
-                ) : (
-                  <>
-                    <Check className="w-4 h-4" />
-                    Submit Complaint
-                  </>
+              <div className="min-h-[2rem]">
+                {geocoding && (
+                  <div className="flex items-center gap-2 text-xs text-[#7a6f64]">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    Resolving address…
+                  </div>
                 )}
+                {!geocoding && pendingAddress && (
+                  <div className="flex items-start gap-2">
+                    <MapPin className="w-3.5 h-3.5 text-[#c86d28] mt-0.5 shrink-0" />
+                    <p className="text-xs text-[#4a423a] leading-relaxed">{pendingAddress}</p>
+                  </div>
+                )}
+                {!pendingMarker && !geocoding && (
+                  <p className="text-xs text-[#7a6f64]">No pin dropped yet — tap the map above.</p>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={confirmMap}
+                disabled={!pendingMarker || !pendingAddress || geocoding}
+                className="w-full py-2.5 rounded-full bg-[#c86d28] text-white text-sm font-semibold hover:bg-[#b35c1e] disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+              >
+                Confirm Location
               </button>
             </div>
+          </AssistantWidget>
+        )}
+
+        {/* Problem (voice-first) */}
+        {showComposer && phase === "problem" && (
+          <ChatComposer
+            value={problem}
+            onChange={setProblem}
+            onSend={submitProblem}
+            textareaId="ai-problem"
+            placeholder="Type or tap the mic to describe the issue…"
+          />
+        )}
+
+        {/* Duration (voice or text + quick chips) */}
+        {showComposer && phase === "duration" && (
+          <ChatComposer
+            value={duration}
+            onChange={setDuration}
+            onSend={() => submitDuration(duration)}
+            textareaId="ai-duration"
+            placeholder="e.g., since yesterday, about a week…"
+            chips={["Started today", "2–3 days", "About a week", "More than a month"]}
+            onChip={(c) => submitDuration(c)}
+          />
+        )}
+
+        {/* Photo */}
+        {showComposer && phase === "photo" && (
+          <AssistantWidget>
+            <div className="space-y-4">
+              {imagePreview ? (
+                <div className="relative rounded-xl overflow-hidden border border-[#e6dfd3]">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={imagePreview} alt="Complaint attachment preview" className="w-full h-52 object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setImageFile(null);
+                      setImagePreview(null);
+                    }}
+                    className="absolute top-3 right-3 w-8 h-8 rounded-full bg-[#1c1917]/80 text-white flex items-center justify-center hover:bg-[#1c1917] transition-colors cursor-pointer"
+                    aria-label="Remove photo"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <label
+                  htmlFor="ai-image"
+                  className="flex flex-col items-center justify-center w-full h-36 rounded-xl border-2 border-dashed border-[#e6dfd3] hover:border-[#c86d28] bg-[#faf6f0] transition-all cursor-pointer"
+                >
+                  <ImagePlus className="w-7 h-7 text-[#7a6f64] mb-2" />
+                  <span className="text-sm font-semibold text-[#4a423a]">Click to attach a photo</span>
+                  <span className="text-xs text-[#7a6f64] font-mono mt-0.5">PNG, JPG, WEBP</span>
+                  <input id="ai-image" type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
+                </label>
+              )}
+              <div className="flex justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={() => goToReview(false)}
+                  className="px-5 py-2.5 rounded-full border border-[#e6dfd3] bg-white text-sm font-semibold text-[#4a423a] hover:bg-[#faf6f0] transition-colors cursor-pointer"
+                >
+                  Skip
+                </button>
+                <button
+                  type="button"
+                  onClick={() => goToReview(!!imageFile)}
+                  disabled={!imageFile}
+                  className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-[#c86d28] text-white text-sm font-semibold hover:bg-[#b35c1e] disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                >
+                  Upload
+                </button>
+              </div>
+            </div>
+          </AssistantWidget>
+        )}
+
+        {/* Review */}
+        {showComposer && phase === "review" && confirmedLocation && (
+          <AssistantWidget wide>
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <ReviewField label="Location" value={confirmedLocation.locationText} />
+                <ReviewField label="Category" value={category} />
+                <ReviewField label="Department" value={departmentName} />
+                <ReviewField label="Duration" value={duration || "—"} />
+              </div>
+
+              <div>
+                <p className="text-xs font-bold text-[#7a6f64] uppercase tracking-wider mb-1.5">Description</p>
+                <p className="text-sm text-[#1c1917] leading-relaxed whitespace-pre-wrap p-3 rounded-xl bg-[#faf6f0] border border-[#e6dfd3]">
+                  {problem}
+                </p>
+              </div>
+
+              {imagePreview && (
+                <div>
+                  <p className="text-xs font-bold text-[#7a6f64] uppercase tracking-wider mb-1.5">Photo</p>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={imagePreview} alt="Complaint attachment" className="rounded-xl border border-[#e6dfd3] max-h-52 object-cover" />
+                </div>
+              )}
+
+              <div className="flex items-start gap-2 p-3 rounded-xl bg-[#fbefe3]/60 border border-[#f6ddc4]">
+                <Sparkles className="w-4 h-4 text-[#c86d28] mt-0.5 shrink-0" />
+                <p className="text-xs text-[#4a423a] leading-relaxed">
+                  Priority will be determined automatically by AI after submission.
+                </p>
+              </div>
+
+              {submitError && (
+                <div className="p-3 rounded-xl bg-[#fde8e8] border border-[#9e3333]/20 text-sm font-semibold text-[#9e3333]">
+                  {submitError}
+                </div>
+              )}
+
+              <div className="flex items-center justify-between pt-1">
+                <button
+                  type="button"
+                  onClick={() => setPhase("problem")}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-[#e6dfd3] bg-white text-sm font-semibold text-[#4a423a] hover:bg-[#faf6f0] transition-colors cursor-pointer"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSubmit}
+                  className="inline-flex items-center gap-2 px-7 py-2.5 rounded-full bg-[#c86d28] text-white text-sm font-semibold hover:bg-[#b35c1e] transition-colors cursor-pointer"
+                >
+                  <Check className="w-4 h-4" />
+                  Submit Complaint
+                </button>
+              </div>
+            </div>
+          </AssistantWidget>
+        )}
+
+        <div ref={scrollRef} />
+      </div>
+
+      {/* Cinematic multi-agent orchestration — FRONTEND VISUALIZATION ONLY.
+          It reflects the real backend result/error set by handleSubmit. */}
+      {phase === "orchestrating" && (
+        <AgentOrchestration
+          hasPhoto={!!imageFile}
+          result={result}
+          error={submitError}
+          onViewComplaint={() => {
+            if (!result) return;
+            router.push(`/citizen/${result.complaintId}`);
+            router.refresh();
+          }}
+          onReturnDashboard={() => {
+            router.push("/citizen");
+            router.refresh();
+          }}
+          onDismiss={() => {
+            setSubmitError("");
+            setPhase("review");
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Chat bubble
+// ---------------------------------------------------------------------------
+function Bubble({ role, children }: { role: "assistant" | "user"; children: React.ReactNode }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25, ease: "easeOut" }}
+      className={`flex ${role === "user" ? "justify-end" : "justify-start"}`}
+    >
+      <div
+        className={`max-w-[82%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${
+          role === "user"
+            ? "bg-[#c86d28] text-white rounded-br-md"
+            : "bg-white border border-[#e6dfd3] text-[#1c1917] rounded-bl-md"
+        }`}
+      >
+        {children}
+      </div>
+    </motion.div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Assistant-side widget container (left aligned card, like an AI message)
+// ---------------------------------------------------------------------------
+function AssistantWidget({ children, wide }: { children: React.ReactNode; wide?: boolean }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25, ease: "easeOut" }}
+      className="flex justify-start"
+    >
+      <div
+        className={`${wide ? "w-full" : "max-w-[92%]"} bg-white border border-[#e6dfd3] rounded-2xl rounded-bl-md p-4 sm:p-5 shadow-sm`}
+      >
+        {children}
+      </div>
+    </motion.div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Voice-first chat composer: large mic (VoiceInput) + text fallback + send
+// ---------------------------------------------------------------------------
+function ChatComposer({
+  value,
+  onChange,
+  onSend,
+  textareaId,
+  placeholder,
+  chips,
+  onChip,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  onSend: () => void;
+  textareaId: string;
+  placeholder: string;
+  chips?: string[];
+  onChip?: (c: string) => void;
+}) {
+  return (
+    <AssistantWidget wide>
+      <div className="space-y-3">
+        {/* Voice-first: the mic is the primary interaction */}
+        <VoiceInput value={value} onChange={onChange} textareaId={textareaId} />
+
+        {chips && chips.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {chips.map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => onChip?.(c)}
+                className="px-3.5 py-1.5 rounded-full border border-[#e6dfd3] bg-white text-sm font-medium text-[#4a423a] hover:border-[#c86d28] hover:text-[#c86d28] hover:bg-[#fbefe3]/50 transition-colors cursor-pointer"
+              >
+                {c}
+              </button>
+            ))}
           </div>
         )}
-      </div>
 
-      <div ref={chatEndRef} />
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Duration sub-input: quick-select chips + free text (kept local to this page)
-// ---------------------------------------------------------------------------
-function DurationInput({ onSubmit }: { onSubmit: (value: string) => void }) {
-  const [value, setValue] = useState("");
-  const QUICK = ["Started today", "2–3 days", "About a week", "More than a month"];
-
-  return (
-    <div className="space-y-3">
-      <label htmlFor="ai-duration" className="block text-sm font-bold text-[#1c1917]">
-        How long has this issue existed?
-      </label>
-      <div className="flex flex-wrap gap-2">
-        {QUICK.map((q) => (
+        {/* Text fallback */}
+        <div className="flex items-end gap-2">
+          <textarea
+            id={textareaId}
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            rows={2}
+            className="flex-1 px-3.5 py-2.5 rounded-xl border border-[#e6dfd3] bg-[#faf6f0] text-sm text-[#1c1917] placeholder:text-[#7a6f64] focus:outline-none focus:ring-2 focus:ring-[#c86d28] focus:border-transparent resize-none"
+            placeholder={placeholder}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey && value.trim()) {
+                e.preventDefault();
+                onSend();
+              }
+            }}
+          />
           <button
-            key={q}
             type="button"
-            onClick={() => onSubmit(q)}
-            className="px-3.5 py-1.5 rounded-full border border-[#e6dfd3] bg-white text-sm font-medium text-[#4a423a] hover:border-[#c86d28] hover:text-[#c86d28] hover:bg-[#fbefe3]/50 transition-colors cursor-pointer"
+            onClick={onSend}
+            disabled={!value.trim()}
+            className="inline-flex items-center justify-center w-11 h-11 rounded-full bg-[#c86d28] text-white hover:bg-[#b35c1e] disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer shrink-0"
+            aria-label="Send"
           >
-            {q}
+            <Send className="w-4 h-4" />
           </button>
-        ))}
+        </div>
       </div>
-      <div className="flex gap-3">
-        <input
-          id="ai-duration"
-          type="text"
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && value.trim()) onSubmit(value);
-          }}
-          className="flex-1 px-4 py-2.5 rounded-xl border border-[#e6dfd3] bg-[#faf6f0] text-sm text-[#1c1917] placeholder:text-[#7a6f64] focus:outline-none focus:ring-2 focus:ring-[#c86d28] focus:border-transparent"
-          placeholder="Or type a duration…"
-        />
-        <button
-          type="button"
-          onClick={() => value.trim() && onSubmit(value)}
-          disabled={!value.trim()}
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#c86d28] text-white text-sm font-semibold hover:bg-[#b35c1e] disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
-        >
-          <ArrowRight className="w-4 h-4" />
-        </button>
-      </div>
-    </div>
+    </AssistantWidget>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Review field
+// Review / result field
 // ---------------------------------------------------------------------------
-function ReviewField({ label, value, hint }: { label: string; value: string; hint?: string }) {
+function ReviewField({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <p className="text-xs font-bold text-[#7a6f64] uppercase tracking-wider mb-1.5">{label}</p>
       <p className="text-sm font-semibold text-[#1c1917] break-words">{value}</p>
-      {hint && <p className="text-[11px] text-[#7a6f64] mt-0.5">{hint}</p>}
     </div>
   );
 }
