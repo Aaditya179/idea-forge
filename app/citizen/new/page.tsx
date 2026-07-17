@@ -108,8 +108,8 @@ export default function NewComplaintPage() {
         return;
       }
 
-      // 6. Fire ALL AI calls in parallel — fetch results, THEN show the pipeline animation
-      const [classifyRes, cleanRes, dupRes] = await Promise.allSettled([
+      // 6. Fire classification and cleanup in parallel
+      const [classifyRes, cleanRes] = await Promise.allSettled([
         // 6a. Groq classification
         (async () => {
           const controller = new AbortController();
@@ -139,22 +139,16 @@ export default function NewComplaintPage() {
           if (!response.ok) throw new Error(`clean: ${response.status}`);
           return (await response.json()) as CleanTranscriptResult;
         })(),
+      ]);
 
-        // 6c. Duplicate check (needs classified department_id, but we'll use the keyword-classified one
-        //     for the parallel call; the classify route updates the DB anyway)
-        (async () => {
-          // Small delay to let classify finish first and update department_id in DB
-          await new Promise((r) => setTimeout(r, 2000));
+      const classifyResult = classifyRes.status === "fulfilled" ? classifyRes.value : null;
+      const cleanResult = cleanRes.status === "fulfilled" ? cleanRes.value : null;
 
-          // Re-read the complaint to get the AI-classified department_id
-          const { data: freshComplaint } = await supabase
-            .from("complaints")
-            .select("department_id, priority")
-            .eq("id", complaint.id)
-            .single();
-
-          const deptId = freshComplaint?.department_id || department.id;
-          const priority = freshComplaint?.priority || null;
+      // 6c. Duplicate check (run sequentially to safely use AI-classified department_id and priority)
+      const dupRes = await (async () => {
+        try {
+          const deptId = classifyResult?.department_id || department.id;
+          const priority = classifyResult?.priority || null;
 
           const controller = new AbortController();
           const timeoutId = setTimeout(() => controller.abort(), 14000);
@@ -173,12 +167,12 @@ export default function NewComplaintPage() {
           });
           clearTimeout(timeoutId);
           if (!response.ok) throw new Error(`dup: ${response.status}`);
-          return (await response.json()) as DuplicateCheckResult;
-        })(),
-      ]);
+          return { status: "fulfilled" as const, value: (await response.json()) as DuplicateCheckResult };
+        } catch (err) {
+          return { status: "rejected" as const, reason: err };
+        }
+      })();
 
-      const classifyResult = classifyRes.status === "fulfilled" ? classifyRes.value : null;
-      const cleanResult = cleanRes.status === "fulfilled" ? cleanRes.value : null;
       const duplicateResult = dupRes.status === "fulfilled" ? dupRes.value : null;
 
       if (classifyRes.status === "rejected") {

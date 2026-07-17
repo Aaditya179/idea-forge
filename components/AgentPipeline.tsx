@@ -21,6 +21,7 @@ export interface ClassifyResult {
   category: string;
   priority: string;
   summary: string;
+  department_id?: string | null;
 }
 
 export interface CleanTranscriptResult {
